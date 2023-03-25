@@ -58,7 +58,7 @@ namespace
         // Value 22050 causes audio distortion on Windows
         int frequency = 44100;
 #else
-        int frequency = 22050;
+        int frequency = 44100;
 #endif
         uint16_t format = AUDIO_S16;
         // Stereo audio support
