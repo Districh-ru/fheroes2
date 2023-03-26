@@ -620,10 +620,10 @@ namespace
         }
 
         if ( volumePercentage >= 100 ) {
-            return MIX_MAX_VOLUME;
+            return ( MIX_MAX_VOLUME - 8 );
         }
 
-        return static_cast<int>( ( std::exp( std::log( 10 + 1 ) * volumePercentage / 100 ) - 1 ) / 10 * MIX_MAX_VOLUME );
+        return static_cast<int>( ( std::exp( std::log( 10 + 1 ) * volumePercentage / 100 ) - 1 ) / 10 * ( MIX_MAX_VOLUME - 8 ) );
     }
 }
 
