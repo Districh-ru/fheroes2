@@ -94,6 +94,7 @@ namespace
         return value.gameWidth < fheroes2::Display::DEFAULT_WIDTH || value.gameHeight < fheroes2::Display::DEFAULT_HEIGHT;
     }
 
+#if !defined( TARGET_PS_VITA )
     std::set<fheroes2::ResolutionInfo> FilterResolutions( const std::set<fheroes2::ResolutionInfo> & resolutionSet )
     {
         static_assert( fheroes2::Display::DEFAULT_WIDTH == 640 && fheroes2::Display::DEFAULT_HEIGHT == 480, "Default resolution must be 640 x 480" );
@@ -174,6 +175,7 @@ namespace
 
         return resolutions;
     }
+#endif
 
     std::vector<uint8_t> StandardPaletteIndexes()
     {
