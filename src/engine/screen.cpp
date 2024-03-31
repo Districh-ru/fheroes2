@@ -609,7 +609,8 @@ namespace
                 resolutionSet.emplace( fheroes2::Display::DEFAULT_WIDTH, fheroes2::Display::DEFAULT_HEIGHT );
                 resolutionSet.emplace( VITA_ASPECT_CORRECTED_WIDTH, fheroes2::Display::DEFAULT_HEIGHT );
                 resolutionSet.emplace( VITA_FULLSCREEN_WIDTH, VITA_FULLSCREEN_HEIGHT );
-                resolutionSet = FilterResolutions( resolutionSet );
+                // On PS Vita we need to force set the scaleable resolution.
+                resolutionSet = { 848, 480, 960, 544 };
 
                 return std::vector<fheroes2::ResolutionInfo>{ resolutionSet.rbegin(), resolutionSet.rend() };
             }();
