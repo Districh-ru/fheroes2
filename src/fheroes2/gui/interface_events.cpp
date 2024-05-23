@@ -131,10 +131,12 @@ void Interface::AdventureMap::_startHeroMove( Heroes & hero )
 void Interface::AdventureMap::EventSwitchFocusedHero( const int32_t tileIndex )
 {
     Heroes * selectedHero = world.GetTiles( tileIndex ).getHero();
-    const Heroes * currentHero = GetFocusHeroes();
-    if ( selectedHero == nullptr || selectedHero == currentHero || selectedHero->GetColor() != currentHero->GetColor() ) {
+
+    if ( selectedHero == nullptr || selectedHero == GetFocusHeroes() || selectedHero->GetColor() != Settings::Get().GetPlayers().getCurrentColor() ) {
+        // Return if no hero is under the cursor, or if this hero is already selected or if hero is controlled by the other player.
         return;
     }
+
     SetFocus( selectedHero, false );
     RedrawFocus();
 }
