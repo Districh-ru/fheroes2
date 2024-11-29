@@ -35,7 +35,6 @@
 #include "difficulty.h"
 #include "game.h"
 #include "game_io.h"
-#include "gamedefs.h"
 #include "logging.h"
 #include "render_processor.h"
 #include "save_format_version.h"
@@ -108,7 +107,7 @@ Settings::Settings()
     , heroes_speed( defaultSpeedDelay )
     , ai_speed( defaultSpeedDelay )
     , scroll_speed( SCROLL_SPEED_NORMAL )
-    , battle_speed( DEFAULT_BATTLE_SPEED )
+    , battle_speed( defaultBattleSpeed )
     , game_type( 0 )
 {
     _gameOptions.SetModes( GAME_FIRST_RUN );
@@ -514,6 +513,11 @@ bool Settings::setGameLanguage( const std::string & language )
         return true;
     }
 
+    // First, let's see if the translation for the requested language is already cached
+    if ( const auto [isCached, isSet] = Translation::setLanguage( language ); isCached ) {
+        return isSet;
+    }
+
     const std::string fileName = std::string( _gameLanguage ).append( ".mo" );
 #if defined( MACOS_APP_BUNDLE )
     const ListFiles translations = Settings::FindFiles( "translations", fileName, false );
@@ -521,12 +525,12 @@ bool Settings::setGameLanguage( const std::string & language )
     const ListFiles translations = Settings::FindFiles( System::concatPath( "files", "lang" ), fileName, false );
 #endif
 
-    if ( !translations.empty() ) {
-        return Translation::bindDomain( language.c_str(), translations.back().c_str() );
+    if ( translations.empty() ) {
+        ERROR_LOG( "Translation file " << fileName << " was not found." )
     }
 
-    ERROR_LOG( "Translation file " << fileName << " was not found." )
-    return false;
+    // If the translation for this language could not be loaded, it will still remain in the cache as invalid
+    return Translation::setLanguage( language, translations.empty() ? std::string_view{} : translations.back() );
 }
 
 void Settings::setEditorAnimation( const bool enable )
@@ -624,10 +628,10 @@ ListFiles Settings::FindFiles( const std::string & prefixDir, const std::string 
 
         if ( System::IsDirectory( path ) ) {
             if ( exactMatch ) {
-                res.FindFileInDir( path, fileNameFilter );
+                res.FindFileInDir( path, fileNameFilter, false );
             }
             else {
-                res.ReadDir( path, fileNameFilter );
+                res.ReadDir( path, fileNameFilter, false );
             }
         }
     }

@@ -142,7 +142,7 @@ namespace
             fheroes2::MultiFontText body;
 
             body.add( { _( "Map: " ), fheroes2::FontType::normalYellow() } );
-            body.add( { info.name, fheroes2::FontType::normalWhite() } );
+            body.add( { info.name, fheroes2::FontType::normalWhite(), info.getSupportedLanguage() } );
 
             if ( info.worldDay > 0 || info.worldWeek > 0 || info.worldMonth > 0 ) {
                 body.add( { _( "\n\nMonth: " ), fheroes2::FontType::normalYellow() } );
@@ -233,7 +233,7 @@ namespace
     MapsFileInfoList getSortedMapsFileInfoList()
     {
         ListFiles files;
-        files.ReadDir( Game::GetSaveDir(), Game::GetSaveFileExtension() );
+        files.ReadDir( Game::GetSaveDir(), Game::GetSaveFileExtension(), false );
 
         MapsFileInfoList mapInfos;
         mapInfos.reserve( files.size() );

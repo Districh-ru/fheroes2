@@ -68,9 +68,11 @@ namespace
     bool isSupportedForLanguageSwitching( const fheroes2::SupportedLanguage language )
     {
         switch ( language ) {
+        case fheroes2::SupportedLanguage::Czech:
         case fheroes2::SupportedLanguage::English:
             // English is a default language so it is not considered as an extra language.
             return false;
+        case fheroes2::SupportedLanguage::Belarusian:
         case fheroes2::SupportedLanguage::Polish:
         case fheroes2::SupportedLanguage::Russian:
         case fheroes2::SupportedLanguage::Slovak:
@@ -138,7 +140,7 @@ namespace
         }
 
         // Returns true if keyboard dialog resize was made.
-        bool resize( const fheroes2::Size size )
+        bool resize( const fheroes2::Size & size )
         {
             if ( _window && size.width == _window->activeArea().width && size.height == _window->activeArea().height ) {
                 // This is the same window size. Nothing to do.
@@ -284,6 +286,8 @@ namespace
     {
         // Numeric layout can be used for special letters as well.
         switch ( language ) {
+        case fheroes2::SupportedLanguage::Belarusian:
+        case fheroes2::SupportedLanguage::Czech:
         case fheroes2::SupportedLanguage::English:
         case fheroes2::SupportedLanguage::Polish:
         case fheroes2::SupportedLanguage::Russian:
@@ -302,6 +306,10 @@ namespace
     std::vector<std::string> getCapitalCharacterLayout( const fheroes2::SupportedLanguage language )
     {
         switch ( language ) {
+        case fheroes2::SupportedLanguage::Belarusian:
+            return { "\xC9\xD6\xD3\xCA\xC5\xCD\xC3\xD8\xA1\xC7\xD5\x92", "\xD4\xDB\xC2\xC0\xCF\xD0\xCE\xCB\xC4\xC6\xDD", "\xDF\xD7\xD1\xCC\xB2\xD2\xDC\xC1\xDE\xA8" };
+        case fheroes2::SupportedLanguage::Czech:
+            return { "\xCC\x8A\xC8\xD8\x8E\xDD\xC1\xCD\xC9", "QWERTZUIOP\xDA", "ASDFGHJKL\xD9", "YXCVBNM" };
         case fheroes2::SupportedLanguage::English:
             return { "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM" };
         case fheroes2::SupportedLanguage::Polish:
@@ -324,6 +332,10 @@ namespace
     std::vector<std::string> getNonCapitalCharacterLayout( const fheroes2::SupportedLanguage language )
     {
         switch ( language ) {
+        case fheroes2::SupportedLanguage::Belarusian:
+            return { "\xE9\xF6\xF3\xEA\xE5\xED\xE3\xF8\xA2\xE7\xF5\x92", "\xF4\xFB\xE2\xE0\xEF\xF0\xEE\xEB\xE4\xE6\xFD", "\xFF\xF7\xF1\xEC\xB3\xF2\xFC\xE1\xFE\xB8" };
+        case fheroes2::SupportedLanguage::Czech:
+            return { "\xEC\x9A\xE8\xF8\xBE\xFD\xE1\xED\xE9", "qwertzuiop\xFA", "asdfghjkl\xF9", "yxcvbnm" };
         case fheroes2::SupportedLanguage::English:
             return { "qwertyuiop", "asdfghjkl", "zxcvbnm" };
         case fheroes2::SupportedLanguage::Polish:
@@ -371,9 +383,11 @@ namespace
         // Different languages have different number of letters per row.
         // We cannot expand the virtual keyboard window beyond 640 pixels but we can change the size of buttons.
         switch ( language ) {
+        case fheroes2::SupportedLanguage::Czech:
         case fheroes2::SupportedLanguage::English:
         case fheroes2::SupportedLanguage::Polish:
             return 30;
+        case fheroes2::SupportedLanguage::Belarusian:
         case fheroes2::SupportedLanguage::Russian:
         case fheroes2::SupportedLanguage::Slovak:
         case fheroes2::SupportedLanguage::Ukrainian:
@@ -495,6 +509,8 @@ namespace
                           const bool isEvilInterface, const bool isExtraLanguageSupported )
     {
         switch ( language ) {
+        case fheroes2::SupportedLanguage::Belarusian:
+        case fheroes2::SupportedLanguage::Czech:
         case fheroes2::SupportedLanguage::English:
         case fheroes2::SupportedLanguage::Polish:
         case fheroes2::SupportedLanguage::Russian:
@@ -508,7 +524,7 @@ namespace
         }
     }
 
-    fheroes2::Rect getButtonsRoi( const std::vector<std::vector<KeyboardButton>> & buttonLayout, const fheroes2::Point offset )
+    fheroes2::Rect getButtonsRoi( const std::vector<std::vector<KeyboardButton>> & buttonLayout, const fheroes2::Point & offset )
     {
         std::vector<int32_t> offsets;
 
@@ -557,7 +573,7 @@ namespace
         return roi;
     }
 
-    void renderButtons( std::vector<std::vector<KeyboardButton>> & buttonLayout, const fheroes2::Point offset, fheroes2::Image & output )
+    void renderButtons( std::vector<std::vector<KeyboardButton>> & buttonLayout, const fheroes2::Point & offset, fheroes2::Image & output )
     {
         std::vector<int32_t> offsets;
 

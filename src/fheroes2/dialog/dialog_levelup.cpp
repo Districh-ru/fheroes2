@@ -29,7 +29,6 @@
 #include "cursor.h"
 #include "dialog.h" // IWYU pragma: associated
 #include "game_hotkeys.h"
-#include "gamedefs.h"
 #include "heroes.h"
 #include "icn.h"
 #include "image.h"
@@ -42,6 +41,7 @@
 #include "translations.h"
 #include "ui_button.h"
 #include "ui_dialog.h"
+#include "ui_language.h"
 #include "ui_text.h"
 
 namespace
@@ -101,9 +101,10 @@ namespace
         const fheroes2::Text box2( std::move( message ), fheroes2::FontType::normalWhite() );
         const int spacer = 10;
 
-        const Dialog::FrameBox box( box1.height( BOXAREA_WIDTH ) + spacer + box2.height( BOXAREA_WIDTH ) + 10 + sprite_frame.height(), true );
+        const Dialog::FrameBox box( box1.height( fheroes2::boxAreaWidthPx ) + spacer + box2.height( fheroes2::boxAreaWidthPx ) + 10 + sprite_frame.height(), true );
 
-        const bool isEvilInterface = Settings::Get().isEvilInterfaceEnabled();
+        const Settings & conf = Settings::Get();
+        const bool isEvilInterface = conf.isEvilInterfaceEnabled();
         const int buttonLearnIcnID = isEvilInterface ? ICN::BUTTON_SMALL_LEARN_EVIL : ICN::BUTTON_SMALL_LEARN_GOOD;
 
         fheroes2::Point pt;
@@ -118,11 +119,11 @@ namespace
         const fheroes2::Rect & boxArea = box.GetArea();
         fheroes2::Point pos( boxArea.x, boxArea.y );
 
-        box1.draw( pos.x, pos.y + 2, BOXAREA_WIDTH, display );
-        pos.y += box1.height( BOXAREA_WIDTH ) + spacer;
+        box1.draw( pos.x, pos.y + 2, fheroes2::boxAreaWidthPx, display );
+        pos.y += box1.height( fheroes2::boxAreaWidthPx ) + spacer;
 
-        box2.draw( pos.x, pos.y + 2, BOXAREA_WIDTH, display );
-        pos.y += box2.height( BOXAREA_WIDTH ) + spacer;
+        box2.draw( pos.x, pos.y + 2, fheroes2::boxAreaWidthPx, display );
+        pos.y += box2.height( fheroes2::boxAreaWidthPx ) + spacer;
 
         // sprite1
         pos.x = box.GetArea().x + box.GetArea().width / 2 - sprite_frame.width() - 20;
@@ -157,7 +158,7 @@ namespace
         fheroes2::ButtonSprite button_hero
             = fheroes2::makeButtonWithBackground( pt.x, pt.y, fheroes2::AGG::GetICN( icnHeroes, 0 ), fheroes2::AGG::GetICN( icnHeroes, 1 ), display );
 
-        text.set( std::to_string( hero.GetSecondarySkills().Count() ) + "/" + std::to_string( HEROESMAXSKILL ), fheroes2::FontType::normalWhite() );
+        text.set( std::to_string( hero.GetSecondarySkills().Count() ) + "/" + std::to_string( Heroes::maxNumOfSecSkills ), fheroes2::FontType::normalWhite() );
         text.draw( box.GetArea().x + ( box.GetArea().width - text.width() ) / 2, pt.y - 15, display );
 
         button_learn1.draw();
@@ -183,7 +184,7 @@ namespace
 
             if ( le.MouseClickLeft( button_hero.area() ) || Game::HotKeyPressEvent( Game::HotKeyEvent::DEFAULT_OKAY ) ) {
                 LocalEvent::Get().reset();
-                hero.OpenDialog( false, true, true, true, true, false );
+                hero.OpenDialog( false, true, true, true, true, false, fheroes2::getLanguageFromAbbreviation( conf.getGameLanguage() ) );
                 display.render();
             }
 

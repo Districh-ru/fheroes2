@@ -38,12 +38,12 @@
 #include "localevent.h"
 #include "mageguild.h"
 #include "math_base.h"
-#include "math_tools.h"
 #include "race.h"
 #include "screen.h"
 #include "settings.h"
 #include "spell.h"
 #include "spell_storage.h"
+#include "tools.h"
 #include "translations.h"
 #include "ui_button.h"
 #include "ui_dialog.h"
@@ -149,7 +149,7 @@ bool RowSpells::QueueEventProcessing()
     return 0 <= index;
 }
 
-void Castle::OpenMageGuild( const Heroes * hero ) const
+void Castle::_openMageGuild( const Heroes * hero ) const
 {
     fheroes2::Display & display = fheroes2::Display::instance();
 
@@ -195,7 +195,7 @@ void Castle::OpenMageGuild( const Heroes * hero ) const
     const int level = GetLevelMageGuild();
     // sprite
     int icn = ICN::UNKNOWN;
-    switch ( race ) {
+    switch ( _race ) {
     case Race::KNGT:
         icn = ICN::MAGEGLDK;
         break;

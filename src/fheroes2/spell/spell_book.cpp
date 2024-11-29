@@ -39,7 +39,6 @@
 #include "image.h"
 #include "localevent.h"
 #include "math_base.h"
-#include "math_tools.h"
 #include "screen.h"
 #include "tools.h"
 #include "translations.h"

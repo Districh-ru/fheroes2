@@ -77,7 +77,7 @@ namespace
             return false;
         }
 
-        const std::vector<uint8_t> palette = paletteStream.getRaw();
+        const std::vector<uint8_t> palette = paletteStream.getRaw( 0 );
         if ( palette.size() != validPaletteSize ) {
             std::cerr << "Invalid palette size of " << palette.size() << " instead of " << validPaletteSize << std::endl;
             return false;
@@ -154,7 +154,7 @@ namespace
                     }
                 }
                 else {
-                    static_assert( std::is_same_v<uint8_t, unsigned char>, "uint8_t is not the same as char, check the logic below" );
+                    static_assert( std::is_same_v<uint8_t, unsigned char> );
 
                     const std::vector<uint8_t> buf = reader.getFile( name );
 
@@ -278,7 +278,7 @@ namespace
                     return EXIT_FAILURE;
                 }
 
-                static_assert( std::is_same_v<uint8_t, unsigned char>, "uint8_t is not the same as char, check the logic below" );
+                static_assert( std::is_same_v<uint8_t, unsigned char> );
 
                 std::vector<uint8_t> buf( size.value() );
 

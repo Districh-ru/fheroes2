@@ -20,9 +20,10 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#ifndef H2ARTIFACT_H
-#define H2ARTIFACT_H
 
+#pragma once
+
+#include <cstddef>
 #include <cstdint>
 #include <set>
 #include <string>
@@ -298,10 +299,13 @@ struct ArtifactSetData
 class BagArtifacts : public std::vector<Artifact>
 {
 public:
+    // Maximum number of artifacts that can be placed in an artifact bag
+    static constexpr size_t maxCapacity{ 14 };
+
     BagArtifacts();
 
     bool ContainSpell( const int spellId ) const;
-    bool isPresentArtifact( const Artifact & ) const;
+    bool isPresentArtifact( const Artifact & art ) const;
 
     bool isArtifactBonusPresent( const fheroes2::ArtifactBonusType type ) const;
     bool isArtifactCursePresent( const fheroes2::ArtifactCurseType type ) const;
@@ -321,7 +325,7 @@ public:
     Artifact getFirstArtifactWithBonus( const fheroes2::ArtifactBonusType bonus ) const;
     Artifact getFirstArtifactWithCurse( const fheroes2::ArtifactCurseType curse ) const;
 
-    bool PushArtifact( const Artifact & );
+    bool PushArtifact( const Artifact & art );
 
     // Removes the first found instance of the specified artifact from the artifact bag
     void RemoveArtifact( const Artifact & art );
@@ -330,11 +334,11 @@ public:
     bool ContainUltimateArtifact() const;
 
     // Automatically exchange artifacts between two heroes. The taker should get the best possible artifacts.
-    void exchangeArtifacts( BagArtifacts & giftBag, const Heroes & taker, const Heroes & giver );
+    static void exchangeArtifacts( Heroes & taker, Heroes & giver );
 
     double getArtifactValue() const;
     uint32_t CountArtifacts() const;
-    uint32_t Count( const Artifact & ) const;
+    uint32_t Count( const Artifact & art ) const;
 
     std::set<ArtifactSetData> assembleArtifactSetIfPossible();
 
@@ -383,5 +387,3 @@ private:
 
     void messageMagicBookAbortTrading() const;
 };
-
-#endif

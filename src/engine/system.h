@@ -25,6 +25,7 @@
 #define H2SYSTEM_H
 
 #include <ctime>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -39,23 +40,22 @@ namespace System
     // Otherwise returns false, which means that app need to resolve wildcard patterns itself (for example, on Windows).
     bool isShellLevelGlobbingSupported();
 
-    bool MakeDirectory( const std::string_view path );
-    bool Unlink( const std::string_view path );
-
+    bool MakeDirectory( const std::string & path );
     std::string concatPath( const std::string_view left, const std::string_view right );
 
     void appendOSSpecificDirectories( std::vector<std::string> & directories );
-    std::string GetConfigDirectory( const std::string_view appName );
-    std::string GetDataDirectory( const std::string_view appName );
+    std::string GetConfigDirectory( const std::string & prog );
+    std::string GetDataDirectory( const std::string & prog );
 
     std::string GetDirname( std::string_view path );
     std::string GetBasename( std::string_view path );
-    std::string GetStem( const std::string_view path );
+    std::string GetStem( std::string_view path );
 
-    bool IsFile( const std::string_view path );
-    bool IsDirectory( const std::string_view path );
+    bool IsFile( const std::string & path, bool writable = false );
+    bool IsDirectory( const std::string & path, bool writable = false );
+    bool Unlink( const std::string & path );
 
-    bool GetCaseInsensitivePath( const std::string_view path, std::string & correctedPath );
+    bool GetCaseInsensitivePath( const std::string & path, std::string & correctedPath );
 
     // Resolves the wildcard pattern 'glob' and appends matching paths to 'fileNames'. Supported wildcards are '?' and '*'.
     // These wildcards are resolved only if they are in the last element of the path. For example, they will be resolved
@@ -63,15 +63,22 @@ namespace System
     // are no files matching the pattern, it will be appended to the 'fileNames' as is.
     void globFiles( const std::string_view glob, std::vector<std::string> & fileNames );
 
-    // Converts the given string from local encoding to SDL encoding (UTF-8). It is used mainly on Windows, because on Windows
-    // this app works with ANSI code page (CP_ACP). On all other systems, it is currently assumed that UTF-8 encoding is used,
-    // and the original string is simply returned unchanged.
-    std::string encLocalToSDL( const std::string_view str );
+<<<<<<< HEAD
+    // Converts the given string from local encoding to UTF-8 encoding (used by SDL). It is used mainly on Windows, because on
+    // Windows this app works with ANSI code page (CP_ACP). On all other systems, it is currently assumed that UTF-8 encoding
+    // is used, and the original string is simply returned unchanged.
+    std::string encLocalToUTF8( const std::string_view str );
 
-    // Converts the given string from SDL encoding (UTF-8) to local encoding. It is used mainly on Windows, because on Windows
-    // this app works with ANSI code page (CP_ACP). On all other systems, it is currently assumed that UTF-8 encoding is used,
-    // and the original string is simply returned unchanged.
-    std::string encSDLToLocal( const std::string_view str );
+    // Converts the given string from UTF-8 encoding (used by SDL) to local encoding. It is used mainly on Windows, because on
+    // Windows this app works with ANSI code page (CP_ACP). On all other systems, it is currently assumed that UTF-8 encoding
+    // is used, and the original string is simply returned unchanged.
+    std::string encUTF8ToLocal( const std::string_view str );
+
+    // Performs a safe conversion of an std::filesystem::path instance to a string. See the implementation for details.
+    std::string fsPathToString( const std::filesystem::path & path );
+=======
+    std::string FileNameToUTF8( const std::string & name );
+>>>>>>> parent of f7bbd38ee (Fix some Windows-specific SDL-related encoding issues (#9098))
 
     tm GetTM( const time_t time );
 }

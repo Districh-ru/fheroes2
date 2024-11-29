@@ -1,6 +1,6 @@
 /***************************************************************************
  *   fheroes2: https://github.com/ihhub/fheroes2                           *
- *   Copyright (C) 2019 - 2024                                             *
+ *   Copyright (C) 2019 - 2023                                             *
  *                                                                         *
  *   Free Heroes2 Engine: http://sourceforge.net/projects/fheroes2         *
  *   Copyright (C) 2009 by Andrey Afletdinov <fheroes2@gmail.com>          *
@@ -21,53 +21,66 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include "dir.h"
-
-#include <filesystem>
-#include <system_error>
+#include <cstring>
 #include <utility>
 
-#if defined( _WIN32 )
-#include <cstring>
-#else
+#if !defined( _WIN32 )
 #include <strings.h>
 #endif
 
+#if defined( _WIN32 )
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#elif defined( TARGET_PS_VITA )
+#include <psp2/io/dirent.h>
+#else
+#include <dirent.h>
+#endif
+
+#include "dir.h"
 #include "system.h"
 
 namespace
 {
-    template <typename F>
-    bool nameFilter( const std::string & filename, const bool needExactMatch, const std::string & filter, const F & strCmp )
+    using StrCmp = int ( * )( const char *, const char * );
+
+    bool filterByName( const char * filename, const bool nameAsFilter, const std::string & name, const StrCmp strCmp )
     {
-        if ( !needExactMatch && filter.empty() ) {
-            return true;
+        if ( !nameAsFilter || !name.empty() ) {
+            const size_t filenameLength = strlen( filename );
+            if ( filenameLength < name.length() )
+                return true;
+
+            if ( !nameAsFilter && filenameLength != name.length() ) {
+                return true;
+            }
+
+            const char * filenamePtr = filename + filenameLength - name.length();
+            if ( strCmp( filenamePtr, name.c_str() ) != 0 )
+                return true;
         }
 
-        if ( filename.length() < filter.length() ) {
-            return false;
-        }
-
-        if ( needExactMatch && filename.length() != filter.length() ) {
-            return false;
-        }
-
-        const char * filenamePtr = filename.c_str() + filename.length() - filter.length();
-
-        return ( strCmp( filenamePtr, filter.c_str() ) == 0 );
+        return false;
     }
 
-    void getFilesFromDirectory( const std::string_view path, const std::string & filter, const bool needExactMatch, ListFiles & files )
+    void getFilesFromDirectory( const std::string & path, const std::string & name, bool sensitive, bool nameAsFilter, ListFiles & files )
     {
-        std::string correctedPath;
-        if ( !System::GetCaseInsensitivePath( path, correctedPath ) ) {
+#if defined( _WIN32 )
+        (void)sensitive;
+
+        const std::string pattern( nameAsFilter ? path + "\\*" + name : path + "\\" + name );
+        WIN32_FIND_DATA data;
+
+        HANDLE hFind = FindFirstFileEx( pattern.c_str(), FindExInfoBasic, &data, FindExSearchNameMatch, nullptr, FIND_FIRST_EX_LARGE_FETCH );
+        if ( hFind == INVALID_HANDLE_VALUE ) {
             return;
         }
 
+<<<<<<< HEAD
 #if defined( _WIN32 )
-        const auto strCmp = _stricmp;
+        auto * const strCmp = _stricmp;
 #else
-        const auto strCmp = strcasecmp;
+        auto * const strCmp = strcasecmp;
 #endif
 
         std::error_code ec;
@@ -79,13 +92,84 @@ namespace
                 continue;
             }
 
-            const std::string fileName = entry.path().filename().string();
-            if ( !nameFilter( fileName, needExactMatch, filter, strCmp ) ) {
+            const std::filesystem::path & entryPath = entry.path();
+
+            if ( !nameFilter( System::fsPathToString( entryPath.filename() ), needExactMatch, filter, strCmp ) ) {
                 continue;
             }
 
-            files.emplace_back( System::concatPath( correctedPath, fileName ) );
+            files.emplace_back( System::fsPathToString( entryPath ) );
+=======
+        do {
+            // Ignore any internal directories
+            if ( data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) {
+                continue;
+            }
+
+            // FindFirstFileEx() searches for both long and short variants of names, so we need additional filtering
+            if ( filterByName( data.cFileName, nameAsFilter, name, _stricmp ) ) {
+                continue;
+            }
+
+            files.emplace_back( System::concatPath( path, data.cFileName ) );
+        } while ( FindNextFile( hFind, &data ) != 0 );
+
+        FindClose( hFind );
+#elif defined( TARGET_PS_VITA )
+        // open the directory
+        const int uid = sceIoDopen( path.c_str() );
+        if ( uid <= 0 )
+            return;
+
+        const StrCmp strCmp = sensitive ? strcmp : strcasecmp;
+
+        // iterate over the directory for files, print name and size of array (always 256)
+        // this means you use strlen() to get length of file name
+        SceIoDirent dir;
+        while ( sceIoDread( uid, &dir ) > 0 ) {
+            std::string fullname = System::concatPath( path, dir.d_name );
+
+            // if not regular file
+            if ( !SCE_S_ISREG( dir.d_stat.st_mode ) )
+                continue;
+
+            if ( filterByName( dir.d_name, nameAsFilter, name, strCmp ) )
+                continue;
+
+            files.emplace_back( std::move( fullname ) );
+>>>>>>> parent of f7bbd38ee (Fix some Windows-specific SDL-related encoding issues (#9098))
         }
+
+        // clean up
+        sceIoDclose( uid );
+#else
+        std::string correctedPath;
+        if ( !System::GetCaseInsensitivePath( path, correctedPath ) )
+            return;
+
+        // read directory
+        DIR * dp = opendir( correctedPath.c_str() );
+        if ( !dp ) {
+            return;
+        }
+
+        const StrCmp strCmp = sensitive ? strcmp : strcasecmp;
+
+        const struct dirent * ep;
+        while ( nullptr != ( ep = readdir( dp ) ) ) {
+            std::string fullname = System::concatPath( correctedPath, ep->d_name );
+
+            // if not regular file
+            if ( !System::IsFile( fullname ) )
+                continue;
+
+            if ( filterByName( ep->d_name, nameAsFilter, name, strCmp ) )
+                continue;
+
+            files.emplace_back( std::move( fullname ) );
+        }
+        closedir( dp );
+#endif
     }
 }
 
@@ -96,19 +180,19 @@ void ListFiles::Append( ListFiles && files )
     }
 }
 
-void ListFiles::ReadDir( const std::string_view path, const std::string & filter )
+void ListFiles::ReadDir( const std::string & path, const std::string & filter, bool sensitive )
 {
-    getFilesFromDirectory( path, filter, false, *this );
+    getFilesFromDirectory( path, filter, sensitive, true, *this );
 }
 
-void ListFiles::FindFileInDir( const std::string_view path, const std::string & fileName )
+void ListFiles::FindFileInDir( const std::string & path, const std::string & fileName, bool sensitive )
 {
-    getFilesFromDirectory( path, fileName, true, *this );
+    getFilesFromDirectory( path, fileName, sensitive, false, *this );
 }
 
-bool ListFiles::IsEmpty( const std::string_view path, const std::string & filter )
+bool ListFiles::IsEmpty( const std::string & path, const std::string & filter, bool sensitive )
 {
     ListFiles list;
-    list.ReadDir( path, filter );
+    list.ReadDir( path, filter, sensitive );
     return list.empty();
 }

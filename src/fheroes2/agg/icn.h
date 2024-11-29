@@ -936,7 +936,12 @@ namespace ICN
         UNIFORM_GOOD_EXIT_BUTTON,
         UNIFORM_EVIL_EXIT_BUTTON,
 
+        GOLDEN_GRADIENT_FONT,
+        SILVER_GRADIENT_FONT,
+
         WHITE_LARGE_FONT,
+        GOLDEN_GRADIENT_LARGE_FONT,
+        SILVER_GRADIENT_LARGE_FONT,
         SWAP_ARROW_LEFT_TO_RIGHT,
         SWAP_ARROW_RIGHT_TO_LEFT,
 
@@ -1118,6 +1123,10 @@ namespace ICN
         BUTTON_RUMORS_EVIL,
         BUTTON_EVENTS_GOOD,
         BUTTON_EVENTS_EVIL,
+        BUTTON_LANGUAGE_GOOD,
+        BUTTON_LANGUAGE_EVIL,
+
+        SCENIBKG_EVIL,
 
         // IMPORTANT! Put any new entry just above this one.
         LASTICN

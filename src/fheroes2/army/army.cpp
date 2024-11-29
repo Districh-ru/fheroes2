@@ -373,8 +373,7 @@ bool Troops::areAllTroopsUnique() const
             continue;
         }
 
-        auto [it, inserted] = monsterId.emplace( troop->GetID() );
-        if ( !inserted ) {
+        if ( auto [dummy, inserted] = monsterId.emplace( troop->GetID() ); !inserted ) {
             return false;
         }
     }
@@ -990,7 +989,7 @@ Army::Army( HeroBase * cmdr /* = nullptr */ )
     }
 }
 
-Army::Army( const Maps::Tiles & tile )
+Army::Army( const Maps::Tile & tile )
     : commander( nullptr )
     , _isSpreadCombatFormation( true )
     , color( Color::NONE )
@@ -1009,13 +1008,13 @@ const Troops & Army::getTroops() const
     return *this;
 }
 
-void Army::setFromTile( const Maps::Tiles & tile )
+void Army::setFromTile( const Maps::Tile & tile )
 {
     assert( commander == nullptr );
 
     Troops::Clean();
 
-    const bool isCaptureObject = MP2::isCaptureObject( tile.GetObject( false ) );
+    const bool isCaptureObject = MP2::isCaptureObject( tile.getMainObjectType( false ) );
     if ( isCaptureObject ) {
         color = getColorFromTile( tile );
     }
@@ -1023,7 +1022,7 @@ void Army::setFromTile( const Maps::Tiles & tile )
         color = Color::NONE;
     }
 
-    switch ( tile.GetObject( false ) ) {
+    switch ( tile.getMainObjectType( false ) ) {
     case MP2::OBJ_PYRAMID:
         at( 0 )->Set( Monster::VAMPIRE_LORD, 10 );
         at( 1 )->Set( Monster::ROYAL_MUMMY, 10 );
@@ -1376,16 +1375,26 @@ std::string Army::String() const
 {
     std::ostringstream os;
 
-    os << "color(" << Color::String( commander ? commander->GetColor() : color ) << "), ";
+    os << "color(" << Color::String( GetColor() ) << "), strength(" << GetStrength() << "), ";
 
-    if ( GetCommander() )
+    if ( const HeroBase * cmdr = GetCommander(); cmdr != nullptr ) {
         os << "commander(" << GetCommander()->GetName() << ")";
+    }
+    else {
+        os << "commander(None)";
+    }
 
     os << ": ";
 
-    for ( const_iterator it = begin(); it != end(); ++it )
-        if ( ( *it )->isValid() )
-            os << std::dec << ( *it )->GetCount() << " " << ( *it )->GetName() << ", ";
+    for ( const Troop * troop : *this ) {
+        assert( troop != nullptr );
+
+        if ( !troop->isValid() ) {
+            continue;
+        }
+
+        os << std::dec << troop->GetCount() << " " << troop->GetName() << ", ";
+    }
 
     return os.str();
 }
@@ -1585,7 +1594,7 @@ void Army::drawMultipleMonsterLines( const Troops & troops, int32_t posX, int32_
     }
 }
 
-NeutralMonsterJoiningCondition Army::GetJoinSolution( const Heroes & hero, const Maps::Tiles & tile, const Troop & troop )
+NeutralMonsterJoiningCondition Army::GetJoinSolution( const Heroes & hero, const Maps::Tile & tile, const Troop & troop )
 {
     // Check for creature alliance/bane campaign awards, campaign only and of course, for human players
     // creature alliance -> if we have an alliance with the appropriate creature (inc. players) they will join for free
@@ -1907,33 +1916,46 @@ void Army::ArrangeForBattle( const Monster & monster, const uint32_t monstersCou
 
 OStreamBase & operator<<( OStreamBase & stream, const Army & army )
 {
-    stream << static_cast<uint32_t>( army.size() );
+    stream.put32( static_cast<uint32_t>( army.size() ) );
 
-    // Army: fixed size
-    for ( Army::const_iterator it = army.begin(); it != army.end(); ++it )
-        stream << **it;
+    std::for_each( army.begin(), army.end(), [&stream]( const Troop * troop ) {
+        assert( troop != nullptr );
+
+        stream << *troop;
+    } );
 
     return stream << army._isSpreadCombatFormation << army.color;
 }
 
 IStreamBase & operator>>( IStreamBase & stream, Army & army )
 {
-    uint32_t armysz;
-    stream >> armysz;
+    if ( const uint32_t size = stream.get32(); army.size() != size ) {
+        // Most likely the save file is corrupted.
+        stream.setFail();
 
-    for ( Army::iterator it = army.begin(); it != army.end(); ++it )
-        stream >> **it;
+        std::for_each( army.begin(), army.end(), []( Troop * troop ) {
+            assert( troop != nullptr );
+
+            troop->Reset();
+        } );
+    }
+    else {
+        std::for_each( army.begin(), army.end(), [&stream]( Troop * troop ) {
+            assert( troop != nullptr );
+
+            stream >> *troop;
+        } );
+    }
 
     stream >> army._isSpreadCombatFormation >> army.color;
 
-    // set army
-    for ( Army::iterator it = army.begin(); it != army.end(); ++it ) {
-        ArmyTroop * troop = static_cast<ArmyTroop *>( *it );
-        if ( troop )
-            troop->SetArmy( army );
-    }
+    assert( std::all_of( army.begin(), army.end(), [&army]( const Troop * troop ) {
+        const ArmyTroop * armyTroop = dynamic_cast<const ArmyTroop *>( troop );
 
-    // set later from owner (castle, heroes)
+        return armyTroop != nullptr && armyTroop->GetArmy() == &army;
+    } ) );
+
+    // Will be set later by the owner (castle or hero)
     army.commander = nullptr;
 
     return stream;
