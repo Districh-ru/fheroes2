@@ -229,6 +229,9 @@ namespace fheroes2
 
     bool processIntegerValueTyping( const int32_t minimum, const int32_t maximum, int32_t & value );
 
+    // Update the given value by keyboard keys press. If maxDigitsCount is 0 then no processing will be made.
+    bool processIntegerValueTyping( const uint8_t maxDigitsCount, const bool allowNegative, int32_t & value );
+
     // Render "hero on a horse" portrait dependent from hero race. Used in Editor.
     void renderHeroRacePortrait( const int race, const fheroes2::Rect & portPos, fheroes2::Image & output );
 }

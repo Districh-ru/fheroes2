@@ -537,7 +537,6 @@ Troop Dialog::RecruitMonster( const Monster & monster0, const uint32_t available
             result = max;
             paymentMonster = monster.GetCost();
 
-            updateCurrentInfo();
             RedrawMonsterInfo( windowActiveArea, monster, available, true );
 
             redraw = true;
@@ -559,12 +558,12 @@ Troop Dialog::RecruitMonster( const Monster & monster0, const uint32_t available
             continue;
         }
 
-        if ( int32_t temp = static_cast<int32_t>( result ); fheroes2::processIntegerValueTyping( 0, static_cast<int32_t>( max ), temp ) ) {
-            result = temp;
+        if ( max > 0 ) {
+            if ( int32_t temp = static_cast<int32_t>( result ); fheroes2::processIntegerValueTyping( uint8_t{ 6 }, false, temp ) ) {
+                result = std::min( static_cast<uint32_t>( temp ), max );
 
-            updateCurrentInfo();
-
-            redraw = true;
+                redraw = true;
+            }
         }
 
         if ( le.MouseClickLeft( recruitCountInputArea ) ) {
@@ -575,16 +574,12 @@ Troop Dialog::RecruitMonster( const Monster & monster0, const uint32_t available
 
             result = temp;
 
-            updateCurrentInfo();
-
             redraw = true;
         }
         else if ( ( le.isMouseWheelUpInArea( rtWheel ) || le.MouseClickLeft( buttonUp.area() ) || le.isKeyPressed( fheroes2::Key::KEY_UP )
                     || timedButtonUp.isDelayPassed() )
                   && result < max ) {
             ++result;
-
-            updateCurrentInfo();
 
             redraw = true;
         }
@@ -593,21 +588,15 @@ Troop Dialog::RecruitMonster( const Monster & monster0, const uint32_t available
                   && result ) {
             --result;
 
-            updateCurrentInfo();
-
             redraw = true;
         }
         else if ( buttonMax.isEnabled() && le.MouseClickLeft( buttonMax.area() ) && result != max ) {
             result = max;
 
-            updateCurrentInfo();
-
             redraw = true;
         }
         else if ( buttonMin.isEnabled() && le.MouseClickLeft( buttonMin.area() ) && result != 1 ) {
             result = 1;
-
-            updateCurrentInfo();
 
             redraw = true;
         }
@@ -625,6 +614,8 @@ Troop Dialog::RecruitMonster( const Monster & monster0, const uint32_t available
         }
 
         if ( redraw ) {
+            updateCurrentInfo();
+
             RedrawCurrentInfo( dialogOffset, result, paymentMonster, paymentCosts, funds, maxmin, background );
 
             if ( 0 == result ) {

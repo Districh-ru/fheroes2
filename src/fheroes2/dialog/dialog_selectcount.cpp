@@ -140,7 +140,7 @@ bool Dialog::SelectCount( std::string header, const int32_t min, const int32_t m
             buttonMin.drawOnState( le.isMouseLeftButtonPressedInArea( buttonMin.area() ) );
         }
 
-        if ( fheroes2::processIntegerValueTyping( min, max, selectedValue ) ) {
+        if ( fheroes2::processIntegerValueTyping( uint8_t{ 11 }, min < 0, selectedValue ) ) {
             valueSelectionElement.setValue( selectedValue );
             needRedraw = true;
         }

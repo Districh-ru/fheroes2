@@ -843,6 +843,52 @@ namespace fheroes2
         return true;
     }
 
+    bool processIntegerValueTyping( const uint8_t maxDigitsCount, const bool allowNegative, int32_t & value )
+    {
+        const LocalEvent & le = LocalEvent::Get();
+
+        if ( !le.isAnyKeyPressed() || maxDigitsCount == 0 ) {
+            // No key is pressed.
+            return false;
+        }
+
+        if ( le.isKeyPressed( fheroes2::Key::KEY_BACKSPACE ) ) {
+            value = value / 10;
+            return true;
+        }
+
+        if ( allowNegative && value != 0 && ( le.isKeyPressed( fheroes2::Key::KEY_MINUS ) || le.isKeyPressed( fheroes2::Key::KEY_KP_MINUS ) ) ) {
+            value = -value;
+
+            return true;
+        }
+
+        int32_t maxAllowed = 1;
+        for ( uint8_t i = 1; i < maxDigitsCount; ++i ) {
+            maxAllowed *= 10;
+        }
+
+        if ( value / maxAllowed != 0 ) {
+            return false;
+        }
+
+        int32_t newDigit = 0;
+        if ( le.getPressedKeyValue() >= fheroes2::Key::KEY_0 && le.getPressedKeyValue() <= fheroes2::Key::KEY_9 ) {
+            newDigit = static_cast<int32_t>( le.getPressedKeyValue() ) - static_cast<int32_t>( fheroes2::Key::KEY_0 );
+        }
+        else if ( le.getPressedKeyValue() >= fheroes2::Key::KEY_KP_0 && le.getPressedKeyValue() <= fheroes2::Key::KEY_KP_9 ) {
+            newDigit = static_cast<int32_t>( le.getPressedKeyValue() ) - static_cast<int32_t>( fheroes2::Key::KEY_KP_0 );
+        }
+        else {
+            return false;
+        }
+
+        value *= 10;
+        value += ( value >= 0 ) ? newDigit : ( -newDigit );
+
+        return true;
+    }
+
     void renderHeroRacePortrait( const int race, const fheroes2::Rect & portPos, fheroes2::Image & output )
     {
         fheroes2::Image racePortrait( portPos.width, portPos.height );
