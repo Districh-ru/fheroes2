@@ -266,7 +266,7 @@ namespace
             }
 
             _textUI.set( insertCharToString( _info, _cursorPosition, _isCursorVisible ? '_' : '\x7F' ), fheroes2::FontType::normalWhite() );
-            _textUI.setCursorPosition( _cursorPosition );
+            _textUI.setCursorPosition( static_cast<uint32_t>( _cursorPosition ) );
             _textUI.fitToOneRow( inputAreaSize.width - inputAreaBorders * 2 );
 
             _textUI.draw( windowRoi.x + ( windowRoi.width - inputAreaSize.width ) / 2 + inputAreaBorders,

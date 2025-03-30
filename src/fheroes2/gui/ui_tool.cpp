@@ -662,15 +662,15 @@ namespace fheroes2
     size_t getTextInputCursorPosition( const TextInput & textInput, const std::string_view fullText, const bool isCenterAlignedText,
                                        const size_t currentTextCursorPosition, const Point & pointerCursorOffset, const Rect & textRoi )
     {
-        if ( fullText.empty() || fullText.size() <= textInput.getOffsetX() ) {
+        if ( fullText.empty() || fullText.size() <= textInput.getTextBeginPos() ) {
             return 0;
         }
 
-        const std::string_view textToCheck = { fullText.data() + textInput.getOffsetX(), fullText.size() - textInput.getOffsetX() };
+        const std::string_view textToCheck = { fullText.data() + textInput.getTextBeginPos(), fullText.size() - textInput.getTextBeginPos() };
         const int32_t textStartOffsetX = isCenterAlignedText ? ( textRoi.width - textInput.width() ) / 2 : 0;
         return fheroes2::getTextInputCursorPosition( textToCheck, textInput.getFontType(), currentTextCursorPosition, pointerCursorOffset.x,
                                                      textRoi.x + textStartOffsetX )
-               + textInput.getOffsetX();
+               + textInput.getTextBeginPos();
     }
 
     size_t getTextInputCursorPosition( const std::string_view text, const FontType fontType, const size_t currentTextCursorPosition, const int32_t pointerCursorXOffset,

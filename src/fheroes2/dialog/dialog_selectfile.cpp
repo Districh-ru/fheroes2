@@ -103,7 +103,7 @@ namespace
     }
 
     void redrawTextInputField( fheroes2::TextInput & textInput, const std::string & filename, const fheroes2::Rect & field, const size_t cursorLocation,
-                               const bool isEditing )
+                               const bool isEditing, const bool isCursorVisible )
     {
         if ( filename.empty() ) {
             return;
@@ -112,13 +112,17 @@ namespace
         fheroes2::Display & display = fheroes2::Display::instance();
 
         textInput.set( filename, isEditing ? fheroes2::FontType::normalWhite() : fheroes2::FontType::normalYellow() );
-        textInput.setCursorPosition( cursorLocation );
+        textInput.setCursorPosition( static_cast<uint32_t>( cursorLocation ) );
 
         // Do not ignore spaces at the end.
-        textInput.keepLineTrailingSpaces();
         textInput.fitToOneRow( maxFileNameWidth );
 
-        textInput.draw( field.x + 4 + ( ( maxFileNameWidth - textInput.width() ) / 2 ), field.y + 4, display );
+        const int32_t posX = field.x + 4 + ( ( maxFileNameWidth - textInput.width() ) / 2 );
+
+        textInput.drawInRoi( posX, field.y + 4, display, field );
+        if ( isEditing && isCursorVisible ) {
+            textInput.drawCursor( posX, field.y + 4, display, field );
+        }
     }
 
     class FileInfoListBox : public Interface::ListBox<Maps::FileInfo>
@@ -371,8 +375,9 @@ namespace
         };
 
         listbox.Redraw();
+
         fheroes2::TextInput textInput;
-        redrawTextInputField( textInput, filename, textInputRoi, 0, isEditing );
+        redrawTextInputField( textInput, filename, textInputRoi, 0, isEditing, true );
 
         const fheroes2::Text title( header, fheroes2::FontType::normalYellow() );
         title.draw( area.x + ( area.width - title.width() ) / 2, area.y + 16, display );
@@ -460,36 +465,39 @@ namespace
                 }
             }
             else if ( isEditing ) {
+                bool prepareRedraw = false;
+
                 if ( le.MouseClickLeft( buttonVirtualKB->area() ) || ( isInGameKeyboardRequired && le.MouseClickLeft( textInputRoi ) ) ) {
                     fheroes2::openVirtualKeyboard( filename, lengthLimit );
 
                     charInsertPos = filename.size();
-                    listbox.Unselect();
-                    isListboxSelected = false;
-                    needRedraw = true;
-
-                    buttonOkDisabler();
+                    prepareRedraw = true;
 
                     // Set the whole screen to redraw next time to properly restore image under the Virtual Keyboard dialog.
                     display.updateNextRenderRoi( { 0, 0, display.width(), display.height() } );
                 }
                 else if ( !filename.empty() && le.MouseClickLeft( textInputRoi ) ) {
                     charInsertPos = fheroes2::getTextInputCursorPosition( textInput, filename, true, charInsertPos, le.getMouseCursorPos(), textInputRoi );
-                    listbox.Unselect();
-                    isListboxSelected = false;
-                    needRedraw = true;
+                    prepareRedraw = true;
                 }
                 else if ( !listboxEvent && le.isAnyKeyPressed()
                           && ( filename.size() < lengthLimit || fheroes2::Key::KEY_BACKSPACE == le.getPressedKeyValue()
                                || fheroes2::Key::KEY_DELETE == le.getPressedKeyValue() )
                           && le.getPressedKeyValue() != fheroes2::Key::KEY_UP && le.getPressedKeyValue() != fheroes2::Key::KEY_DOWN ) {
                     charInsertPos = InsertKeySym( filename, charInsertPos, le.getPressedKeyValue(), LocalEvent::getCurrentKeyModifiers() );
+                    prepareRedraw = true;
+                }
 
+                if ( prepareRedraw ) {
                     buttonOkDisabler();
 
                     needRedraw = true;
                     listbox.Unselect();
                     isListboxSelected = false;
+
+                    // Show cursor when it has moved.
+                    Game::AnimateResetDelay( Game::DelayType::CURSOR_BLINK_DELAY );
+                    isCursorVisible = true;
                 }
             }
 
@@ -536,11 +544,11 @@ namespace
                 textInputAndDateBackground.restore();
 
                 if ( isListboxSelected ) {
-                    redrawTextInputField( textInput, filename, textInputRoi, 0, false );
+                    redrawTextInputField( textInput, filename, textInputRoi, 0, false, false );
                     redrawDateTime( display, listbox.GetCurrent().timestamp, dateTimeoffsetX, textInputRoi.y + 4, fheroes2::FontType::normalYellow() );
                 }
                 else if ( isEditing ) {
-                    redrawTextInputField( textInput, insertCharToString( filename, charInsertPos, isCursorVisible ? '_' : '\x7F' ), textInputRoi, charInsertPos, true );
+                    redrawTextInputField( textInput, filename, textInputRoi, charInsertPos, true, isCursorVisible );
                     redrawDateTime( display, std::time( nullptr ), dateTimeoffsetX, textInputRoi.y + 4, fheroes2::FontType::normalWhite() );
                 }
             }

@@ -274,23 +274,48 @@ namespace fheroes2
     class TextInput final : public Text
     {
     public:
-        using Text::Text;
+        TextInput()
+        {
+            _keepLineTrailingSpaces = true;
+        }
 
-        void setCursorPosition( const size_t position )
+        TextInput( std::string text, const FontType fontType )
+            : Text( std::move( text ), fontType )
+        {
+            _keepLineTrailingSpaces = true;
+        }
+
+        TextInput( std::string text, const FontType fontType, const std::optional<SupportedLanguage> language )
+            : Text( std::move( text ), fontType )
+        {
+            _language = language;
+            _keepLineTrailingSpaces = true;
+        }
+
+        int32_t width() const override;
+
+        void drawInRoi( const int32_t x, const int32_t y, Image & output, const Rect & imageRoi ) const override;
+
+        void drawCursor( const int32_t x, const int32_t y, Image & output, const Rect & imageRoi );
+        void drawCursor( const int32_t x, const int32_t y, const int32_t maxWidth, Image & output, const Rect & imageRoi );
+
+        void fitToOneRow( const int32_t maxWidth ) override;
+
+        void setCursorPosition( const uint32_t position )
         {
             _cursorPosition = position;
         }
 
-        void fitToOneRow( const int32_t maxWidth ) override;
-
-        size_t getOffsetX() const
+        uint32_t getTextBeginPos() const
         {
-            return _textOffsetX;
+            return _textBeginPos;
         }
 
     private:
-        size_t _cursorPosition{ 0 };
-        size_t _textOffsetX{ 0 };
+        int32_t _cursorPosition{ 0 };
+        int32_t _textBeginPos{ 0 };
+        int32_t _textLength{ 0 };
+        bool _isTruncatedAtEnd{ false };
     };
 
     class MultiFontText final : public TextBase

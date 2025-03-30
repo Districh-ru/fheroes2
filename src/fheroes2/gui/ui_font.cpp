@@ -6113,7 +6113,7 @@ namespace fheroes2
         icnVsSprite[124 - 32].resize( 3, icnVsSprite[91 - 32].height() + 3 );
         fheroes2::Copy( icnVsSprite[91 - 32], 0, 0, icnVsSprite[124 - 32], 0, 0, 3, icnVsSprite[91 - 32].height() - 4 );
         fheroes2::Copy( icnVsSprite[91 - 32], 0, icnVsSprite[91 - 32].height() - 7, icnVsSprite[124 - 32], 0, icnVsSprite[91 - 32].height() - 4, 3, 7 );
-        icnVsSprite[124 - 32].setPosition( icnVsSprite[91 - 32].x(), icnVsSprite[91 - 32].y() );
+        icnVsSprite[124 - 32].setPosition( icnVsSprite[91 - 32].x(), icnVsSprite[91 - 32].y() - 1 );
 
         // System call 'DELETE' (0x7F) is never used as a text character in phrases.
         // To make the blinking text cursor we have to make a transparent character with the width of the cursor '_'.

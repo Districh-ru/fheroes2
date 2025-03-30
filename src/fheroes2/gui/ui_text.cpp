@@ -36,6 +36,8 @@ namespace
 
     const uint8_t invalidChar{ '?' };
 
+    const uint8_t cursorChar{ '|' };
+
     const std::string truncationSymbol( "..." );
 
     // Returns true if character is a line separator ('\n').
@@ -338,7 +340,7 @@ namespace fheroes2
     int32_t Text::width() const
     {
         const auto langugeSwitcher = getLanguageSwitcher( *this );
-        const fheroes2::FontCharHandler charHandler( _fontType );
+        const FontCharHandler charHandler( _fontType );
 
         return getLineWidth( reinterpret_cast<const uint8_t *>( _text.data() ), static_cast<int32_t>( _text.size() ), charHandler, _keepLineTrailingSpaces );
     }
@@ -429,7 +431,7 @@ namespace fheroes2
         }
 
         const auto langugeSwitcher = getLanguageSwitcher( *this );
-        const fheroes2::FontCharHandler charHandler( _fontType );
+        const FontCharHandler charHandler( _fontType );
 
         renderSingleLine( reinterpret_cast<const uint8_t *>( _text.data() ), static_cast<int32_t>( _text.size() ), x, y, output, imageRoi, charHandler );
     }
@@ -452,7 +454,7 @@ namespace fheroes2
         getTextLineInfos( lineInfos, maxWidth, height(), false );
 
         const uint8_t * data = reinterpret_cast<const uint8_t *>( _text.data() );
-        const fheroes2::FontCharHandler charHandler( _fontType );
+        const FontCharHandler charHandler( _fontType );
 
         for ( const TextLineInfo & info : lineInfos ) {
             if ( info.characterCount > 0 ) {
@@ -480,7 +482,7 @@ namespace fheroes2
         }
 
         const auto langugeSwitcher = getLanguageSwitcher( *this );
-        const fheroes2::FontCharHandler charHandler( _fontType );
+        const FontCharHandler charHandler( _fontType );
 
         const int32_t originalTextWidth
             = getLineWidth( reinterpret_cast<const uint8_t *>( _text.data() ), static_cast<int32_t>( _text.size() ), charHandler, _keepLineTrailingSpaces );
@@ -496,92 +498,6 @@ namespace fheroes2
         _text += truncationSymbol;
     }
 
-    void TextInput::fitToOneRow( const int32_t maxWidth )
-    {
-        assert( maxWidth > 0 );
-        if ( maxWidth <= 0 || _text.empty() ) {
-            return;
-        }
-
-        const auto langugeSwitcher = getLanguageSwitcher( *this );
-        const fheroes2::FontCharHandler charHandler( _fontType );
-        const int32_t fullLineWidth = getLineWidth( reinterpret_cast<const uint8_t *>( _text.data() ), static_cast<int32_t>( _text.size() ), charHandler, true );
-        if ( fullLineWidth < maxWidth ) {
-            return;
-        }
-
-        constexpr size_t cursorToBorderDistance = 4;
-
-        // If the cursor is to the left of the TextBox.
-        _textOffsetX = std::max( std::min( static_cast<int>( _textOffsetX ), static_cast<int>( _cursorPosition - cursorToBorderDistance ) ), 0 );
-
-        // If some characters were deleted and we have space for new characters.
-        int32_t currentWidth
-            = getLineWidth( reinterpret_cast<const uint8_t *>( _text.data() + _textOffsetX ), static_cast<int32_t>( _text.size() - _textOffsetX ), charHandler, true );
-        const uint8_t * textData = reinterpret_cast<const uint8_t *>( _text.data() );
-
-        while ( _textOffsetX > 0 ) {
-            const uint8_t prevChar = textData[_textOffsetX - 1];
-            currentWidth += charHandler.getWidth( prevChar );
-
-            if ( currentWidth > maxWidth ) {
-                break;
-            }
-
-            --_textOffsetX;
-        }
-
-        // If the cursor is to the right of the Textbox.
-        int32_t maxCharacterCount = getMaxCharacterCount( reinterpret_cast<const uint8_t *>( _text.data() + _textOffsetX ),
-                                                          static_cast<int32_t>( _text.size() - _textOffsetX ), charHandler, maxWidth );
-        while ( ( _textOffsetX + maxCharacterCount <= _cursorPosition + cursorToBorderDistance ) && ( _textOffsetX + maxCharacterCount < _text.size() ) ) {
-            ++_textOffsetX;
-            maxCharacterCount = getMaxCharacterCount( reinterpret_cast<const uint8_t *>( _text.data() + _textOffsetX ),
-                                                      static_cast<int32_t>( _text.size() - _textOffsetX ), charHandler, maxWidth );
-        }
-
-        const size_t originalTextSize = _text.size();
-        _text = _text.substr( _textOffsetX, maxCharacterCount );
-
-        const int32_t truncationSymbolWidth = getTruncationSymbolWidth( _fontType );
-
-        // Insert truncation symbol at the beginning if required.
-        if ( _textOffsetX != 0 ) {
-            int totalWidth = 0;
-            int charCount = 0;
-
-            for ( auto iter = _text.begin(); iter != _text.end(); ++iter ) {
-                if ( totalWidth >= truncationSymbolWidth ) {
-                    break;
-                }
-
-                totalWidth += charHandler.getWidth( *iter );
-                ++charCount;
-            }
-
-            _text.erase( 0, charCount );
-            _text.insert( 0, truncationSymbol );
-        }
-
-        // Insert truncation symbol at the end if required.
-        if ( _text.size() + _textOffsetX < originalTextSize ) {
-            int totalWidth = 0;
-            int charCount = 0;
-
-            for ( auto iter = _text.rbegin(); iter != _text.rend(); ++iter ) {
-                if ( totalWidth >= truncationSymbolWidth ) {
-                    break;
-                }
-
-                totalWidth += charHandler.getWidth( *iter );
-                ++charCount;
-            }
-
-            _text.erase( _text.size() - charCount, charCount );
-            _text.insert( _text.size(), truncationSymbol );
-        }
-    }
-
     void Text::getTextLineInfos( std::vector<TextLineInfo> & textLineInfos, const int32_t maxWidth, const int32_t rowHeight, const bool keepTextTrailingSpaces ) const
     {
         assert( !_text.empty() );
@@ -592,7 +508,7 @@ namespace fheroes2
         int32_t lineWidth = firstLineOffsetX;
         int32_t offsetY = textLineInfos.empty() ? 0 : textLineInfos.back().offsetY;
 
-        const fheroes2::FontCharHandler charHandler( _fontType );
+        const FontCharHandler charHandler( _fontType );
 
         if ( maxWidth < 1 ) {
             // The text will be displayed in a single line.
@@ -718,6 +634,140 @@ namespace fheroes2
         textLineInfos.emplace_back( offsetX, offsetY, lineWidth, lineCharCount );
     }
 
+    int32_t TextInput::width() const
+    {
+        const auto langugeSwitcher = getLanguageSwitcher( *this );
+        const FontCharHandler charHandler( _fontType );
+
+        if ( _textBeginPos == 0 && !_isTruncatedAtEnd ) {
+            return getLineWidth( reinterpret_cast<const uint8_t *>( _text.data() ), static_cast<int32_t>( _text.size() ), charHandler, _keepLineTrailingSpaces );
+        }
+
+        return getLineWidth( reinterpret_cast<const uint8_t *>( _text.data() ) + _textBeginPos, _textLength, charHandler, _keepLineTrailingSpaces )
+               + getTruncationSymbolWidth( _fontType ) * ( ( _textBeginPos != 0 ) && _isTruncatedAtEnd ? 2 : 1 );
+    }
+
+    void TextInput::drawInRoi( const int32_t x, const int32_t y, Image & output, const Rect & imageRoi ) const
+    {
+        if ( output.empty() || _text.empty() ) {
+            // No use to render something on an empty image or if something is empty.
+            return;
+        }
+
+        const auto langugeSwitcher = getLanguageSwitcher( *this );
+        const FontCharHandler charHandler( _fontType );
+
+        int32_t offsetX = x;
+
+        if ( _textBeginPos != 0 ) {
+            // Insert truncation symbol at the beginning.
+            offsetX = renderSingleLine( reinterpret_cast<const uint8_t *>( truncationSymbol.data() ), static_cast<int32_t>( truncationSymbol.size() ), x, y, output,
+                                        imageRoi, charHandler );
+        }
+
+        offsetX = renderSingleLine( reinterpret_cast<const uint8_t *>( _text.data() ) + _textBeginPos,
+                                    _textLength == 0 ? static_cast<int32_t>( _text.size() - _textBeginPos ) : _textLength, offsetX, y, output, imageRoi, charHandler );
+
+        // Insert truncation symbol at the end if required.
+        if ( _isTruncatedAtEnd ) {
+            renderSingleLine( reinterpret_cast<const uint8_t *>( truncationSymbol.data() ), static_cast<int32_t>( truncationSymbol.size() ), offsetX, y, output, imageRoi,
+                              charHandler );
+        }
+    }
+
+    void TextInput::drawCursor( const int32_t x, const int32_t y, Image & output, const Rect & imageRoi )
+    {
+        const FontCharHandler charHandler( _fontType );
+
+        const int32_t cursorPos = _cursorPosition - _textBeginPos;
+        const int32_t textLineWidth
+            = ( cursorPos == 0 ) ? 0 : getLineWidth( reinterpret_cast<const uint8_t *>( _text.data() ) + _textBeginPos, cursorPos, charHandler, true );
+
+        const fheroes2::Sprite & charSprite = charHandler.getSprite( cursorChar );
+        assert( !charSprite.empty() );
+
+        const int32_t offsetX = x - charSprite.width() / 2 + textLineWidth + ( _textBeginPos == 0 ? 0 : getTruncationSymbolWidth( _fontType ) );
+
+        const fheroes2::Rect charRoi{ offsetX + charSprite.x(), y + charSprite.y(), charSprite.width(), charSprite.height() };
+
+        const fheroes2::Rect overlappedRoi = imageRoi ^ charRoi;
+
+        fheroes2::Blit( charSprite, overlappedRoi.x - charRoi.x, overlappedRoi.y - charRoi.y, output, overlappedRoi.x, overlappedRoi.y, overlappedRoi.width,
+                        overlappedRoi.height );
+    }
+
+    void TextInput::drawCursor( const int32_t x, const int32_t y, const int32_t maxWidth, Image & output, const Rect & imageRoi )
+    {
+        const int32_t textWidth
+            = getLineWidth( reinterpret_cast<const uint8_t *>( _text.data() ), static_cast<int32_t>( _text.size() ), FontCharHandler( _fontType ), true );
+
+        drawCursor( x + ( maxWidth - textWidth ) / 2, y, output, imageRoi );
+    }
+
+    void TextInput::fitToOneRow( const int32_t maxWidth )
+    {
+        assert( maxWidth > 0 );
+        if ( maxWidth <= 0 || _text.empty() ) {
+            return;
+        }
+
+        const auto langugeSwitcher = getLanguageSwitcher( *this );
+        const FontCharHandler charHandler( _fontType );
+        const uint8_t * textData = reinterpret_cast<const uint8_t *>( _text.data() );
+        _textLength = static_cast<int32_t>( _text.size() );
+
+        const int32_t fullLineWidth = getLineWidth( textData, _textLength, charHandler, true );
+        if ( fullLineWidth < maxWidth ) {
+            // There is no need to fit the text. Reset text fitting values.
+
+            _textBeginPos = 0;
+            _isTruncatedAtEnd = false;
+            return;
+        }
+
+        constexpr int32_t cursorToBorderDistance = 4;
+
+        // If the cursor is to the left of the TextBox.
+        _textBeginPos = ( _cursorPosition > cursorToBorderDistance ) ? std::min( _textBeginPos, _cursorPosition - cursorToBorderDistance ) : 0;
+
+        assert( _textBeginPos <= _textLength );
+
+        _textLength -= _textBeginPos;
+
+        int32_t currentWidth = getLineWidth( textData + _textBeginPos, _textLength, charHandler, true );
+        const int32_t truncationSymbolWidth = getTruncationSymbolWidth( _fontType );
+        const int32_t truncatedMaxWidth = maxWidth - truncationSymbolWidth;
+
+        if ( currentWidth < truncatedMaxWidth ) {
+            // If some characters were deleted and we have space for new characters.
+            while ( _textBeginPos != 0 ) {
+                const int32_t prevCharWidth = charHandler.getWidth( textData[_textBeginPos - 1] );
+
+                if ( prevCharWidth > truncatedMaxWidth - currentWidth ) {
+                    break;
+                }
+
+                --_textBeginPos;
+                ++_textLength;
+                currentWidth += prevCharWidth;
+            }
+        }
+
+        const int32_t originalTextSize = static_cast<int32_t>( _text.size() );
+
+        // If the cursor is to the right of the Textbox.
+        _textLength = getMaxCharacterCount( textData + _textBeginPos, _textLength, charHandler,
+                                            ( _textBeginPos != 0 && currentWidth > truncatedMaxWidth ) ? truncatedMaxWidth - truncationSymbolWidth : truncatedMaxWidth );
+        while ( ( _textBeginPos + _textLength <= _cursorPosition + cursorToBorderDistance ) && ( _textBeginPos + _textLength < originalTextSize ) ) {
+            ++_textBeginPos;
+            _textLength
+                = getMaxCharacterCount( textData + _textBeginPos, static_cast<int32_t>( originalTextSize - _textBeginPos ), charHandler,
+                                        ( _textBeginPos != 0 && currentWidth > truncatedMaxWidth ) ? truncatedMaxWidth - truncationSymbolWidth : truncatedMaxWidth );
+        }
+
+        _isTruncatedAtEnd = ( _textLength + _textBeginPos < originalTextSize );
+    }
+
     MultiFontText::~MultiFontText() = default;
 
     void MultiFontText::add( Text text )
@@ -804,7 +854,7 @@ namespace fheroes2
         for ( const Text & text : _texts ) {
             const auto langugeSwitcher = getLanguageSwitcher( text );
             const int32_t fontHeight = getFontHeight( text._fontType.size );
-            const fheroes2::FontCharHandler charHandler( text._fontType );
+            const FontCharHandler charHandler( text._fontType );
 
             offsetX = renderSingleLine( reinterpret_cast<const uint8_t *>( text._text.data() ), static_cast<int32_t>( text._text.size() ), offsetX,
                                         y + ( maxFontHeight - fontHeight ) / 2, output, imageRoi, charHandler );
@@ -852,7 +902,7 @@ namespace fheroes2
 
             const uint8_t * dataEnd = data + singleText._text.size();
 
-            const fheroes2::FontCharHandler charHandler( singleText._fontType );
+            const FontCharHandler charHandler( singleText._fontType );
 
             while ( data < dataEnd ) {
                 if ( infoIter->characterCount > 0 ) {
