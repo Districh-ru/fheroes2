@@ -367,8 +367,9 @@ namespace Battle
         void _redrawCoverStatic();
         void RedrawLowObjects( const int32_t cellId );
         void RedrawHighObjects( const int32_t cellId );
-        void RedrawCastle( const Castle & castle, const int32_t cellId );
-        void RedrawCastleMainTower( const Castle & castle );
+        void _redrawCastle( const Castle & castle, const int32_t cellId );
+        void _redrawCastleCatapult();
+        void _redrawCastleMainTower( const Castle & castle );
         void RedrawKilled();
         void RedrawInterface();
         void RedrawOpponents();
@@ -460,7 +461,7 @@ namespace Battle
         bool humanturn_exit{ true };
         bool humanturn_redraw{ true };
         uint32_t animation_flags_frame{ 0 };
-        int catapult_frame{ 0 };
+        uint32_t _catapultFrame{ 0 };
 
         int _interruptAutoCombatForColor{ 0 };
 

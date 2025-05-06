@@ -1529,12 +1529,13 @@ void Battle::Interface::RedrawArmies()
         }
 
         if ( castle != nullptr ) {
-            // Redraw main tower.
             if ( cellRowId == 5 ) {
-                RedrawCastleMainTower( *castle );
+                // Redraw main tower.
+                _redrawCastleMainTower( *castle );
             }
-            else if ( cellRowId == 7 ) { // Redraw catapult.
-                RedrawCastle( *castle, Arena::CATAPULT_POS );
+            else if ( cellRowId == 7 ) {
+                // Redraw catapult.
+                _redrawCastleCatapult();
             }
 
             std::vector<const Unit *> deadTroopBeforeWall;
@@ -1682,7 +1683,7 @@ void Battle::Interface::RedrawArmies()
                 fheroes2::Blit( spellSprite, _mainSurface, overlaySprite->position.x, overlaySprite->position.y, overlaySprite->isReflectedImage );
             }
 
-            RedrawCastle( *castle, wallCellId );
+            _redrawCastle( *castle, wallCellId );
 
             for ( const Unit * unit : deadTroopAfterWall ) {
                 RedrawTroopSprite( *unit );
@@ -2296,123 +2297,135 @@ void Battle::Interface::_redrawCoverStatic()
     }
 }
 
-void Battle::Interface::RedrawCastle( const Castle & castle, const int32_t cellId )
+void Battle::Interface::_redrawCastle( const Castle & castle, const int32_t cellId )
 {
-    const int castleIcnId = ICN::getCastleIcnId( castle.GetRace() );
-
-    if ( Arena::CATAPULT_POS == cellId ) {
-        const fheroes2::Sprite & sprite = fheroes2::AGG::GetICN( ICN::CATAPULT, catapult_frame );
-        fheroes2::Blit( sprite, _mainSurface, 22 + sprite.x(), 390 + sprite.y() );
-    }
-    else if ( Arena::CASTLE_GATE_POS == cellId ) {
+    if ( cellId == Arena::CASTLE_GATE_POS ) {
         const Bridge * bridge = Arena::GetBridge();
         assert( bridge != nullptr );
         if ( bridge != nullptr && !bridge->isDestroyed() ) {
+            // Draw the castle wall over the bridge.
+            const int castleIcnId = ICN::getCastleIcnId( castle.GetRace() );
             const fheroes2::Sprite & sprite = fheroes2::AGG::GetICN( castleIcnId, 4 );
             fheroes2::Blit( sprite, _mainSurface, sprite.x(), sprite.y() );
         }
     }
-    else if ( Arena::CASTLE_FIRST_TOP_WALL_POS == cellId || Arena::CASTLE_SECOND_TOP_WALL_POS == cellId || Arena::CASTLE_THIRD_TOP_WALL_POS == cellId
-              || Arena::CASTLE_FOURTH_TOP_WALL_POS == cellId ) {
-        uint32_t index = 0;
+    else {
+        uint32_t icnIndex;
+
+        auto wallIcnIndexOffset = [cellId, &castle]() {
+            if ( castle.isFortificationBuilt() ) {
+                switch ( Board::GetCell( cellId )->GetObject() ) {
+                case 0:
+                    return 31;
+                case 1:
+                    return 35;
+                case 2:
+                    return 27;
+                case 3:
+                    return 23;
+                default:
+                    break;
+                }
+            }
+            else {
+                switch ( Board::GetCell( cellId )->GetObject() ) {
+                case 0:
+                    return 8;
+                case 1:
+                    return 4;
+                case 2:
+                    return 0;
+                default:
+                    break;
+                }
+            }
+
+            return 0;
+        };
 
         switch ( cellId ) {
         case Arena::CASTLE_FIRST_TOP_WALL_POS:
-            index = 5;
+            icnIndex = 5 + wallIcnIndexOffset();
             break;
         case Arena::CASTLE_SECOND_TOP_WALL_POS:
-            index = 6;
+            icnIndex = 6 + wallIcnIndexOffset();
             break;
         case Arena::CASTLE_THIRD_TOP_WALL_POS:
-            index = 7;
+            icnIndex = 7 + wallIcnIndexOffset();
             break;
         case Arena::CASTLE_FOURTH_TOP_WALL_POS:
-            index = 8;
+            icnIndex = 8 + wallIcnIndexOffset();
+            break;
+        case Arena::CASTLE_TOP_ARCHER_TOWER_POS:
+        case Arena::CASTLE_BOTTOM_ARCHER_TOWER_POS:
+        case Arena::CASTLE_TOP_GATE_TOWER_POS:
+        case Arena::CASTLE_BOTTOM_GATE_TOWER_POS:
             break;
         default:
-            break;
+            // This is not a Castle high object.
+            return;
         }
 
-        if ( castle.isFortificationBuilt() ) {
-            switch ( Board::GetCell( cellId )->GetObject() ) {
-            case 0:
-                index += 31;
-                break;
-            case 1:
-                index += 35;
-                break;
-            case 2:
-                index += 27;
-                break;
-            case 3:
-                index += 23;
-                break;
-            default:
-                break;
+        if ( Arena::CASTLE_FIRST_TOP_WALL_POS == cellId || Arena::CASTLE_SECOND_TOP_WALL_POS == cellId || Arena::CASTLE_THIRD_TOP_WALL_POS == cellId
+             || Arena::CASTLE_FOURTH_TOP_WALL_POS == cellId ) {
+            const int castleIcnId = ICN::getCastleIcnId( castle.GetRace() );
+            const fheroes2::Sprite & sprite = fheroes2::AGG::GetICN( castleIcnId, icnIndex );
+            fheroes2::Blit( sprite, _mainSurface, sprite.x(), sprite.y() );
+        }
+        else if ( Arena::CASTLE_TOP_ARCHER_TOWER_POS == cellId ) {
+            const Tower * ltower = Arena::GetTower( TowerType::TWR_LEFT );
+            uint32_t index = 17;
+
+            if ( castle.isBuild( BUILD_LEFTTURRET ) && ltower ) {
+                index = ltower->isValid() ? 18 : 19;
             }
-        }
-        else {
-            switch ( Board::GetCell( cellId )->GetObject() ) {
-            case 0:
-                index += 8;
-                break;
-            case 1:
-                index += 4;
-                break;
-            case 2:
-                index += 0;
-                break;
-            default:
-                break;
+            else if ( Board::GetCell( cellId )->GetObject() == 1 ) {
+                // Tower without built turret can be damaged by the Earthquake spell.
+                index = 19;
             }
-        }
 
-        const fheroes2::Sprite & sprite = fheroes2::AGG::GetICN( castleIcnId, index );
-        fheroes2::Blit( sprite, _mainSurface, sprite.x(), sprite.y() );
-    }
-    else if ( Arena::CASTLE_TOP_ARCHER_TOWER_POS == cellId ) {
-        const Tower * ltower = Arena::GetTower( TowerType::TWR_LEFT );
-        uint32_t index = 17;
-
-        if ( castle.isBuild( BUILD_LEFTTURRET ) && ltower ) {
-            index = ltower->isValid() ? 18 : 19;
+            const int castleIcnId = ICN::getCastleIcnId( castle.GetRace() );
+            const fheroes2::Sprite & towerSprite = fheroes2::AGG::GetICN( castleIcnId, index );
+            fheroes2::Blit( towerSprite, _mainSurface, 443 + towerSprite.x(), 153 + towerSprite.y() );
         }
-        else if ( Board::GetCell( cellId )->GetObject() == 1 ) {
-            // Tower without built turret can be damaged by the Earthquake spell.
-            index = 19;
-        }
+        else if ( Arena::CASTLE_BOTTOM_ARCHER_TOWER_POS == cellId ) {
+            const Tower * rtower = Arena::GetTower( TowerType::TWR_RIGHT );
+            uint32_t index = 17;
 
-        const fheroes2::Sprite & towerSprite = fheroes2::AGG::GetICN( castleIcnId, index );
-        fheroes2::Blit( towerSprite, _mainSurface, 443 + towerSprite.x(), 153 + towerSprite.y() );
-    }
-    else if ( Arena::CASTLE_BOTTOM_ARCHER_TOWER_POS == cellId ) {
-        const Tower * rtower = Arena::GetTower( TowerType::TWR_RIGHT );
-        uint32_t index = 17;
+            if ( castle.isBuild( BUILD_RIGHTTURRET ) && rtower ) {
+                index = rtower->isValid() ? 18 : 19;
+            }
+            else if ( Board::GetCell( cellId )->GetObject() == 1 ) {
+                // Tower without built turret can be damaged by the Earthquake spell.
+                index = 19;
+            }
 
-        if ( castle.isBuild( BUILD_RIGHTTURRET ) && rtower ) {
-            index = rtower->isValid() ? 18 : 19;
+            const int castleIcnId = ICN::getCastleIcnId( castle.GetRace() );
+            const fheroes2::Sprite & towerSprite = fheroes2::AGG::GetICN( castleIcnId, index );
+            fheroes2::Blit( towerSprite, _mainSurface, 443 + towerSprite.x(), 405 + towerSprite.y() );
         }
-        else if ( Board::GetCell( cellId )->GetObject() == 1 ) {
-            // Tower without built turret can be damaged by the Earthquake spell.
-            index = 19;
+        else if ( Arena::CASTLE_TOP_GATE_TOWER_POS == cellId ) {
+            const uint32_t index = ( Board::GetCell( cellId )->GetObject() == 1 ) ? 19 : 17;
+            const int castleIcnId = ICN::getCastleIcnId( castle.GetRace() );
+            const fheroes2::Sprite & towerSprite = fheroes2::AGG::GetICN( castleIcnId, index );
+            fheroes2::Blit( towerSprite, _mainSurface, 399 + towerSprite.x(), 237 + towerSprite.y() );
         }
-
-        const fheroes2::Sprite & towerSprite = fheroes2::AGG::GetICN( castleIcnId, index );
-        fheroes2::Blit( towerSprite, _mainSurface, 443 + towerSprite.x(), 405 + towerSprite.y() );
-    }
-    else if ( Arena::CASTLE_TOP_GATE_TOWER_POS == cellId ) {
-        const int index = ( Board::GetCell( cellId )->GetObject() == 1 ) ? 19 : 17;
-        const fheroes2::Sprite & towerSprite = fheroes2::AGG::GetICN( castleIcnId, index );
-        fheroes2::Blit( towerSprite, _mainSurface, 399 + towerSprite.x(), 237 + towerSprite.y() );
-    }
-    else if ( Arena::CASTLE_BOTTOM_GATE_TOWER_POS == cellId ) {
-        const int index = ( Board::GetCell( cellId )->GetObject() == 1 ) ? 19 : 17;
-        const fheroes2::Sprite & towerSprite = fheroes2::AGG::GetICN( castleIcnId, index );
-        fheroes2::Blit( towerSprite, _mainSurface, 399 + towerSprite.x(), 321 + towerSprite.y() );
+        else if ( Arena::CASTLE_BOTTOM_GATE_TOWER_POS == cellId ) {
+            const uint32_t index = ( Board::GetCell( cellId )->GetObject() == 1 ) ? 19 : 17;
+            const int castleIcnId = ICN::getCastleIcnId( castle.GetRace() );
+            const fheroes2::Sprite & towerSprite = fheroes2::AGG::GetICN( castleIcnId, index );
+            fheroes2::Blit( towerSprite, _mainSurface, 399 + towerSprite.x(), 321 + towerSprite.y() );
+        }
     }
 }
 
-void Battle::Interface::RedrawCastleMainTower( const Castle & castle )
+void Battle::Interface::_redrawCastleCatapult()
+{
+    const fheroes2::Sprite & sprite = fheroes2::AGG::GetICN( ICN::CATAPULT, _catapultFrame );
+    fheroes2::Blit( sprite, _mainSurface, 22 + sprite.x(), 390 + sprite.y() );
+}
+
+void Battle::Interface::_redrawCastleMainTower( const Castle & castle )
 {
     const fheroes2::Sprite & sprite = fheroes2::AGG::GetICN( ICN::getCastleIcnId( castle.GetRace() ), ( Arena::GetTower( TowerType::TWR_CENTER )->isValid() ? 20 : 26 ) );
 
@@ -2760,7 +2773,7 @@ void Battle::Interface::HumanTurn( const Unit & unit, Actions & actions )
     _currentUnit = &unit;
     humanturn_redraw = false;
     humanturn_exit = false;
-    catapult_frame = 0;
+    _catapultFrame = 0;
 
     // in case we moved the window
     _interfacePosition = border.GetArea();
@@ -5040,12 +5053,12 @@ void Battle::Interface::RedrawActionCatapultPart1( const CastleDefenseStructure 
     AudioManager::PlaySound( M82::CATSND00 );
 
     // catapult animation
-    while ( le.HandleEvents( false ) && catapult_frame < 5 ) {
+    while ( le.HandleEvents( false ) && _catapultFrame < 5 ) {
         CheckGlobalEvents( le );
 
         if ( Game::validateAnimationDelay( Game::BATTLE_CATAPULT_DELAY ) ) {
             Redraw();
-            ++catapult_frame;
+            ++_catapultFrame;
         }
     }
 
@@ -5099,8 +5112,8 @@ void Battle::Interface::RedrawActionCatapultPart1( const CastleDefenseStructure 
         CheckGlobalEvents( le );
 
         if ( Game::validateAnimationDelay( Game::BATTLE_CATAPULT_BOULDER_DELAY ) ) {
-            if ( catapult_frame < 9 )
-                ++catapult_frame;
+            if ( _catapultFrame < 9 )
+                ++_catapultFrame;
 
             RedrawPartialStart();
             fheroes2::Blit( fheroes2::AGG::GetICN( ICN::BOULDER, boulderFrameId ), _mainSurface, pnt->x, pnt->y );
@@ -5150,7 +5163,7 @@ void Battle::Interface::RedrawActionCatapultPart1( const CastleDefenseStructure 
     }
 
     if ( !isHit ) {
-        catapult_frame = 0;
+        _catapultFrame = 0;
     }
 }
 
@@ -5198,7 +5211,7 @@ void Battle::Interface::RedrawActionCatapultPart2( const CastleDefenseStructure 
             ++frame;
         }
     }
-    catapult_frame = 0;
+    _catapultFrame = 0;
 }
 
 void Battle::Interface::RedrawActionArrowSpell( const Unit & target )

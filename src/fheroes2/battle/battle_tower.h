@@ -49,8 +49,16 @@ namespace Battle
         Tower & operator=( const Tower & ) = delete;
 
         bool isValid() const override;
-        TowerType GetType() const;
-        uint32_t GetAttackBonus() const;
+        TowerType GetType() const
+        {
+            return _towerType;
+        }
+
+        uint32_t GetAttackBonus() const
+        {
+            return _attackBonus;
+        }
+
         uint32_t GetAttack() const override;
 
         const char * GetName() const;

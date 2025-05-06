@@ -75,16 +75,6 @@ bool Battle::Tower::isValid() const
     return _isValid;
 }
 
-Battle::TowerType Battle::Tower::GetType() const
-{
-    return _towerType;
-}
-
-uint32_t Battle::Tower::GetAttackBonus() const
-{
-    return _attackBonus;
-}
-
 uint32_t Battle::Tower::GetAttack() const
 {
     return Unit::GetAttack() + _attackBonus;
@@ -100,6 +90,8 @@ fheroes2::Point Battle::Tower::GetPortPosition() const
     case TowerType::TWR_CENTER:
         return { 560, 170 };
     default:
+        // This is not a valid Tower type!
+        assert( 0 );
         break;
     }
 
