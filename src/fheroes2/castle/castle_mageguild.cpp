@@ -68,7 +68,8 @@ namespace
 
 RowSpells::RowSpells( const fheroes2::Point & pos, const Castle & castle, const int lvl )
 {
-    const bool hide = castle.GetLevelMageGuild() < lvl;
+    const int guildLevel = castle.GetLevelMageGuild();
+    const bool hide = guildLevel < lvl;
     const fheroes2::Sprite & roll_show = fheroes2::AGG::GetICN( ICN::TOWNWIND, 0 );
     const fheroes2::Sprite & roll_hide = fheroes2::AGG::GetICN( ICN::TOWNWIND, 1 );
     const fheroes2::Sprite & roll = ( hide ? roll_hide : roll_show );
@@ -91,43 +92,55 @@ RowSpells::RowSpells( const fheroes2::Point & pos, const Castle & castle, const 
         break;
     }
 
-    for ( int32_t i = 0; i < count; ++i )
-        coords.emplace_back( pos.x + i * 110 - roll.width() / 2, pos.y, roll.width(), roll.height() );
+    const bool haveLibraryCapability = castle.HaveLibraryCapability();
+    coords.clear();
+    coords.reserve( count + static_cast<size_t>( haveLibraryCapability ? 1 : 0 ) );
 
-    if ( castle.HaveLibraryCapability() ) {
-        if ( !hide && castle.isLibraryBuild() )
-            coords.emplace_back( pos.x + count * 110 - roll_show.width() / 2, pos.y, roll_show.width(), roll_show.height() );
-        else
-            coords.emplace_back( pos.x + count * 110 - roll_hide.width() / 2, pos.y, roll_hide.width(), roll_hide.height() );
+    for ( int32_t i = 0; i < count; ++i ) {
+        coords.emplace_back( pos.x + i * 110 - roll.width() / 2, pos.y, roll.width(), roll.height() );
     }
 
-    spells.reserve( 6 );
-    spells = castle.GetMageGuild().GetSpells( castle.GetLevelMageGuild(), castle.isLibraryBuild(), lvl );
+    if ( haveLibraryCapability ) {
+        if ( !hide && castle.isLibraryBuild() ) {
+            coords.emplace_back( pos.x + count * 110 - roll_show.width() / 2, pos.y, roll_show.width(), roll_show.height() );
+        }
+        else {
+            coords.emplace_back( pos.x + count * 110 - roll_hide.width() / 2, pos.y, roll_hide.width(), roll_hide.height() );
+        }
+    }
+
+    spells = castle.GetMageGuild().GetSpells( guildLevel, castle.isLibraryBuild(), lvl );
     spells.resize( coords.size(), Spell::NONE );
 }
 
 void RowSpells::Redraw( fheroes2::Image & output )
 {
-    const fheroes2::Sprite & roll_show = fheroes2::AGG::GetICN( ICN::TOWNWIND, 0 );
+    assert( coords.size() == spells.size() );
 
-    for ( std::vector<fheroes2::Rect>::iterator it = coords.begin(); it != coords.end(); ++it ) {
-        const fheroes2::Rect & dst = ( *it );
-        const Spell & spell = spells[std::distance( coords.begin(), it )];
+    if ( spells.empty() ) {
+        return;
+    }
 
-        // roll hide
-        if ( dst.width < roll_show.width() || spell == Spell::NONE ) {
-            const fheroes2::Sprite & roll_hide = fheroes2::AGG::GetICN( ICN::TOWNWIND, 1 );
-            fheroes2::Blit( roll_hide, output, dst.x, dst.y );
+    const fheroes2::Sprite & spellScrollOpened = fheroes2::AGG::GetICN( ICN::TOWNWIND, 0 );
+    const fheroes2::Sprite & spellScroll = fheroes2::AGG::GetICN( ICN::TOWNWIND, 1 );
+
+    for ( size_t i = 0; i < coords.size(); ++i ) {
+        const fheroes2::Rect & dst = coords[i];
+        const Spell & spell = spells[i];
+
+        if ( spell == Spell::NONE ) {
+            // Draw folded scroll when there is no spell.
+            fheroes2::Blit( spellScroll, output, dst.x, dst.y );
         }
-        // roll show
         else {
-            fheroes2::Blit( roll_show, output, dst.x, dst.y );
+            // Draw scroll with a spell over it.
+            fheroes2::Blit( spellScrollOpened, output, dst.x, dst.y );
 
             const fheroes2::Sprite & icon = fheroes2::AGG::GetICN( ICN::SPELLS, spell.IndexSprite() );
             fheroes2::Blit( icon, output, dst.x + 3 + ( dst.width - icon.width() ) / 2, dst.y + 31 - icon.height() / 2 );
 
             const fheroes2::Text text( spell.GetName(), fheroes2::FontType::smallWhite() );
-            text.draw( dst.x + 18, dst.y + 57, 78, fheroes2::Display::instance() );
+            text.draw( dst.x + 18, dst.y + 57, 78, output );
         }
     }
 }
@@ -138,15 +151,20 @@ bool RowSpells::QueueEventProcessing()
 
     const int32_t index = GetRectIndex( coords, le.getMouseCursorPos() );
 
-    if ( 0 <= index && ( le.MouseClickLeft() || le.isMouseRightButtonPressed() ) ) {
+    if ( index < 0 ) {
+        return false;
+    }
+
+    const bool rightMouseButtonPressed = le.isMouseRightButtonPressed();
+    if ( rightMouseButtonPressed || le.MouseClickLeft() ) {
         const Spell & spell = spells[index];
 
         if ( spell != Spell::NONE ) {
-            fheroes2::SpellDialogElement( spell, nullptr ).showPopup( le.isMouseRightButtonPressed() ? Dialog::ZERO : Dialog::OK );
+            fheroes2::SpellDialogElement( spell, nullptr ).showPopup( rightMouseButtonPressed ? Dialog::ZERO : Dialog::OK );
         }
     }
 
-    return 0 <= index;
+    return true;
 }
 
 void Castle::_openMageGuild( const Heroes * hero ) const

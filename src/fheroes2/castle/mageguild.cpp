@@ -170,11 +170,21 @@ SpellStorage MageGuild::GetSpells( int guildLevel, bool hasLibrary, int spellLev
 
     if ( spellLevel == -1 ) {
         // Get all available spells
-        for ( int level = 1; level <= guildLevel; ++level ) {
-            result.Append( general.GetSpells( level ) );
+        if ( guildLevel == 5 ) {
+            // Get spells for all 1-5 levels.
+            result = general.GetSpells();
 
             if ( hasLibrary ) {
-                result.Append( library.GetSpells( level ) );
+                result.Append( library.GetSpells() );
+            }
+        }
+        else {
+            for ( int level = 1; level <= guildLevel; ++level ) {
+                result.Append( general.GetSpells( level ) );
+
+                if ( hasLibrary ) {
+                    result.Append( library.GetSpells( level ) );
+                }
             }
         }
     }

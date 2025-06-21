@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <map>
 #include <optional>
 #include <string>
 #include <utility>
@@ -291,6 +292,56 @@ namespace
         fheroes2::Rect _buildArea{ 0, 0, 69, 70 };
         fheroes2::Rect _banArea{ 0, 0, 68, 70 };
     };
+
+    void mageGuildSpellsDialog( std::map<uint8_t, int32_t> & mustHaveSpells, std::vector<int32_t> & bannedSpells, const bool showLibrarySpells,
+                                const fheroes2::Rect & backgroundRoi )
+    {
+        (void)mustHaveSpells;
+        (void)bannedSpells;
+        (void)showLibrarySpells;
+
+        const CursorRestorer cursorRestorer( true, Cursor::POINTER );
+
+        fheroes2::Display & display = fheroes2::Display::instance();
+
+        fheroes2::ImageRestorer backgroundRestorer( display, backgroundRoi.x, backgroundRoi.y, backgroundRoi.width, backgroundRoi.height );
+
+        const bool isEvilInterface = Settings::Get().isEvilInterfaceEnabled();
+        const fheroes2::Sprite & backgroundSprite = fheroes2::AGG::GetICN( ( isEvilInterface ? ICN::STONEBAK_EVIL : ICN::STONEBAK ), 0 );
+        const fheroes2::Sprite & bottomBar = fheroes2::AGG::GetICN( ICN::SMALLBAR, 0 );
+        const int32_t barHeight = bottomBar.height();
+
+        fheroes2::Copy( backgroundSprite, 0, 0, display, backgroundRoi.x, backgroundRoi.y, backgroundRoi.width, backgroundRoi.height - barHeight );
+
+        // Bottom bar.
+        const int32_t barPosY = backgroundRoi.y + backgroundRoi.height - barHeight;
+        const int32_t backgroundHalfWidth = backgroundRoi.width / 2;
+        const int32_t exitWidth = fheroes2::AGG::GetICN( ICN::BUTTON_GUILDWELL_EXIT, 0 ).width();
+
+        fheroes2::Copy( bottomBar, 1, 0, display, backgroundRoi.x, barPosY, backgroundHalfWidth, barHeight );
+        fheroes2::Copy( bottomBar, bottomBar.width() - backgroundHalfWidth + exitWidth - 1, 0, display, backgroundRoi.x + backgroundHalfWidth, barPosY,
+                        backgroundHalfWidth - exitWidth + 1, barHeight );
+
+        // Exit button.
+        fheroes2::Button buttonExit( backgroundRoi.x + backgroundRoi.width - exitWidth, barPosY, ICN::BUTTON_GUILDWELL_EXIT, 0, 1 );
+
+        buttonExit.draw();
+
+        display.render( backgroundRoi );
+
+        LocalEvent & le = LocalEvent::Get();
+
+        while ( le.HandleEvents() ) {
+            buttonExit.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonExit.area() ) );
+
+            if ( le.MouseClickLeft( buttonExit.area() ) || Game::HotKeyCloseWindow() ) {
+                break;
+            }
+        }
+
+        backgroundRestorer.restore();
+        display.render( backgroundRoi );
+    }
 }
 
 namespace Editor
@@ -342,6 +393,13 @@ namespace Editor
         };
         drawCastleName();
 
+        // Button to open dialog to set forced and disabled spells in the Mages Guild.
+        fheroes2::ButtonSprite buttonSpells;
+        {
+            const char * translatedText = fheroes2::getSupportedText( gettext_noop( "SET SPELLS" ), fheroes2::FontType::buttonReleasedWhite() );
+            background.renderTextAdaptedButtonSprite( buttonSpells, translatedText, { 219, 48 }, fheroes2::StandardWindow::Padding::TOP_CENTER );
+        }
+
         // Allow castle building checkbox.
         fheroes2::Point dstPt( dialogRoi.x + rightPartOffsetX + 10, dialogRoi.y + 130 );
         fheroes2::MovableSprite allowCastleSign;
@@ -365,9 +423,10 @@ namespace Editor
 
         // Build restrict mode button. We use center_center padding to make sure localized variable-width buttons are centered too.
         fheroes2::ButtonSprite buttonRestrictBuilding;
-
-        const char * translatedText = fheroes2::getSupportedText( gettext_noop( "RESTRICT" ), fheroes2::FontType::buttonReleasedWhite() );
-        background.renderTextAdaptedButtonSprite( buttonRestrictBuilding, translatedText, { 219, -32 }, fheroes2::StandardWindow::Padding::CENTER_CENTER );
+        {
+            const char * translatedText = fheroes2::getSupportedText( gettext_noop( "RESTRICT" ), fheroes2::FontType::buttonReleasedWhite() );
+            background.renderTextAdaptedButtonSprite( buttonRestrictBuilding, translatedText, { 219, -32 }, fheroes2::StandardWindow::Padding::CENTER_CENTER );
+        }
 
         const bool isNeutral = ( color == PlayerColor::NONE );
 
@@ -470,6 +529,7 @@ namespace Editor
 
         while ( le.HandleEvents() ) {
             buttonExit.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonExit.area() ) );
+            buttonSpells.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonSpells.area() ) );
 
             if ( le.MouseClickLeft( buttonExit.area() ) || Game::HotKeyCloseWindow() ) {
                 break;
@@ -477,6 +537,10 @@ namespace Editor
 
             if ( le.MouseClickLeft( buttonRestrictBuilding.area() ) ) {
                 buildingRestriction = !buildingRestriction;
+            }
+            else if ( le.MouseClickLeft( buttonSpells.area() ) ) {
+                const bool hasLibraryCapability = ( race == Race::WZRD ) || ( race == Race::RAND );
+                mageGuildSpellsDialog( castleMetadata.mustHaveSpells, castleMetadata.bannedSpells, hasLibraryCapability, dialogRoi );
             }
 
             buttonRestrictBuilding.drawOnState( buildingRestriction || le.isMouseLeftButtonPressedAndHeldInArea( buttonRestrictBuilding.area() ) );
