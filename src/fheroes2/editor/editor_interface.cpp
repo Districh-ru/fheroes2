@@ -2799,10 +2799,14 @@ namespace Interface
                 // Update the castle entrance road.
 
                 const int32_t previousEntranceIndex = movableObjectInfo.tileIndex + _mapFormat.width;
-                Maps::updateRoadOnTile( _mapFormat, previousEntranceIndex );
+                if ( static_cast<size_t>( previousEntranceIndex ) < _mapFormat.tiles.size() ) {
+                    Maps::updateRoadOnTile( _mapFormat, previousEntranceIndex );
+                }
 
                 const int32_t newEntranceIndex = destinationTile + _mapFormat.width;
-                Maps::updateRoadOnTile( _mapFormat, newEntranceIndex );
+                if ( static_cast<size_t>( newEntranceIndex ) < _mapFormat.tiles.size() ) {
+                    Maps::updateRoadOnTile( _mapFormat, newEntranceIndex );
+                }
             }
 
             action->commit();
