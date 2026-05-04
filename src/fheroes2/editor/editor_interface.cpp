@@ -1028,15 +1028,101 @@ namespace
             // Castles and towns store their colors inside flags.
             // The chosen tile might not be the main tile of the castle.
             // We need to get flag information from the main tile.
-            const int32_t mainTileIndex = Maps::Tile::getIndexOfMainTile( tile );
+            int32_t mainTileIndex = tileId;
 
-            const int color = Maps::getTownColorIndex( mapFormat, ( mainTileIndex >= 0 ) ? mainTileIndex : tileId, object.id );
+            if ( !MP2::isOffGameActionObject( tile.getMainObjectType( false ) ) ) {
+                // This is not the main castle / town tile and also it could be a random castle.
+                // Maps::Tile::getIndexOfMainTile() simply won't work for this case.
+                // So, we need to do our own optimized logic.
+
+                const int32_t foundMainIndex = [tileId, &mapFormat, objectUID = object.id]() -> int32_t {
+                    // Maximum castle size in tile is 5 x 5 and the main tile in not at the bottom.
+                    // So the furthest point from to the center is 3.
+                    constexpr int32_t radiusOfSearch{ 3 };
+                    for ( int32_t y = radiusOfSearch; y >= -1; --y ) {
+                        const int32_t offsetX = tileId + y * mapFormat.width;
+                        for ( int32_t x = -radiusOfSearch; x <= radiusOfSearch; ++x ) {
+                            const int32_t index = offsetX + x;
+                            if ( !Maps::isValidAbsIndex( index ) ) {
+                                continue;
+                            }
+
+                            const Maps::Tile & foundTile = world.getTile( index );
+                            const MP2::MapObjectType tileObjectType{ foundTile.getMainObjectType( false ) };
+                            if ( tileObjectType != MP2::OBJ_CASTLE && tileObjectType != MP2::OBJ_RANDOM_CASTLE && tileObjectType != MP2::OBJ_RANDOM_TOWN ) {
+                                continue;
+                            }
+
+                            if ( foundTile.getMainObjectPart()._uid != 0 && ( objectUID == foundTile.getMainObjectPart()._uid ) ) {
+                                return index;
+                            }
+                        }
+                    }
+
+                    return -1;
+                }();
+
+                if ( foundMainIndex >= 0 ) {
+                    mainTileIndex = foundMainIndex;
+                }
+            }
+
+            const int color = Maps::getTownColorIndex( mapFormat, mainTileIndex, object.id );
             type = Interface::EditorPanel::generateTownObjectProperties( type, color );
         }
 
         group = object.group;
         objectUID = object.id;
         return true;
+    }
+
+    template <typename T>
+    bool copyMetadataIfAvailable( const uint32_t originalObjectUID, const uint32_t newObjectUID, std::map<uint32_t, T> & metadata )
+    {
+        auto iter = metadata.find( originalObjectUID );
+        if ( iter == metadata.end() ) {
+            return false;
+        }
+
+        metadata[newObjectUID] = iter->second;
+        return true;
+    }
+
+    void copyMetadataToObjectClone( const uint32_t originalObjectUID, const uint32_t newObjectUID, Maps::Map_Format::MapFormat & mapFormat, const int32_t tileId )
+    {
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.castleMetadata ) ) {
+            return;
+        }
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.heroMetadata ) ) {
+            return;
+        }
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.sphinxMetadata ) ) {
+            return;
+        }
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.signMetadata ) ) {
+            return;
+        }
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.adventureMapEventMetadata ) ) {
+            return;
+        }
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.selectionObjectMetadata ) ) {
+            return;
+        }
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.capturableObjectsMetadata ) ) {
+            auto iter = mapFormat.capturableObjectsMetadata.find( newObjectUID );
+            if ( iter != mapFormat.capturableObjectsMetadata.end() ) {
+                world.CaptureObject( tileId, iter->second.ownerColor );
+            }
+            return;
+        }
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.monsterMetadata ) ) {
+            return;
+        }
+        if ( copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.artifactMetadata ) ) {
+            return;
+        }
+
+        copyMetadataIfAvailable( originalObjectUID, newObjectUID, mapFormat.resourceMetadata );
     }
 
 #if defined( WITH_DEBUG )
@@ -1231,7 +1317,7 @@ namespace Interface
                     const fheroes2::Point indices = getBrushAreaIndicies( brushSize, _tileUnderCursor );
 
                     assert( Maps::isValidAbsIndex( indices.x ) );
-                    const bool isActionObject = ( _editorPanel.isDetailEdit() && brushSize.width == 1 && brushSize.height == 1
+                    const bool isActionObject = ( _editorPanel.isObjectEditingMode() && brushSize.width == 1 && brushSize.height == 1
                                                   && MP2::isOffGameActionObject( world.getTile( indices.x ).getMainObjectType() ) );
 
                     _gameArea.renderTileAreaSelect( display, indices.x, indices.y, isActionObject );
@@ -1623,7 +1709,7 @@ namespace Interface
                             _brushTiles.clear();
                         }
                     }
-                    else if ( _editorPanel.isDetailEdit() ) {
+                    else if ( _editorPanel.isObjectMovingMode() || _editorPanel.isObjectCopyingMode() ) {
                         if ( le.isMouseLeftButtonPressed() ) {
                             if ( _brushTiles.count( _tileUnderCursor ) == 0 ) {
                                 if ( _brushTiles.empty() ) {
@@ -1646,7 +1732,12 @@ namespace Interface
                         }
                         else {
                             if ( le.isMouseLeftButtonReleased() ) {
-                                _tryToMoveObject( _movableObjectInfo, _tileUnderCursor );
+                                if ( _editorPanel.isObjectMovingMode() ) {
+                                    _tryToMoveObject( _movableObjectInfo, _tileUnderCursor );
+                                }
+                                else {
+                                    _tryToCopyObject( _movableObjectInfo, _tileUnderCursor );
+                                }
                             }
 
                             // Make sure to clear the action related information.
@@ -1917,7 +2008,7 @@ namespace Interface
 
         Maps::Tile & tile = world.getTile( tileIndex );
 
-        if ( _editorPanel.isDetailEdit() ) {
+        if ( _editorPanel.isObjectEditingMode() ) {
             // Trigger an action only when metadata has been changed to avoid expensive computations and bloated list of actions.
             // Comparing a metadata structure is much faster than restoring the whole map.
 
@@ -2254,7 +2345,7 @@ namespace Interface
                     const PlayerColor newColor = Dialog::selectPlayerColor( ownerColor, _mapFormat.availablePlayerColors );
 
                     if ( newColor != ownerColor ) {
-                        fheroes2::ActionCreator action( _historyManager, _mapFormat, fheroes2::ActionCreator::ActionType::CAPTURABLE_OBJECT_METADATA );
+                        fheroes2::ActionCreator action( _historyManager, _mapFormat, fheroes2::ActionCreator::ActionType::GENERIC );
 
                         if ( newColor == PlayerColor::NONE ) {
                             _mapFormat.capturableObjectsMetadata.erase( object.id );
@@ -2741,20 +2832,36 @@ namespace Interface
                 world.CaptureObject( destinationTile, capturableObjectIter->second.ownerColor );
             }
 
-            if ( movableObjectInfo.groupType == Maps::ObjectGroup::KINGDOM_TOWNS ) {
-                // Update the castle entrance road.
-
-                const int32_t previousEntranceIndex = movableObjectInfo.tileIndex + _mapFormat.width;
-                Maps::updateRoadOnTile( _mapFormat, previousEntranceIndex );
-
-                const int32_t newEntranceIndex = destinationTile + _mapFormat.width;
-                Maps::updateRoadOnTile( _mapFormat, newEntranceIndex );
-            }
-
             action->commit();
         }
 
         Maps::setLastObjectUID( originalLastObjectUID );
+    }
+
+    void EditorInterface::_tryToCopyObject( const MovableObjectInfo & movableObjectInfo, const int32_t destinationTile )
+    {
+        assert( movableObjectInfo.tileIndex >= 0 );
+        assert( destinationTile >= 0 );
+
+        if ( movableObjectInfo.groupType == Maps::ObjectGroup::NONE ) {
+            // No object to move.
+            return;
+        }
+
+        if ( movableObjectInfo.tileIndex == destinationTile ) {
+            // Cannot copy to itself.
+            return;
+        }
+
+        auto action = std::make_unique<fheroes2::ActionCreator>( _historyManager, _mapFormat );
+
+        Maps::Tile & tile = world.getTile( destinationTile );
+        if ( _tryToPlaceObject( tile, movableObjectInfo.objectType, movableObjectInfo.groupType, false, action ) ) {
+            copyMetadataToObjectClone( movableObjectInfo.objectUID, Maps::getLastObjectUID(), _mapFormat, destinationTile );
+
+            assert( action.get() != nullptr );
+            action->commit();
+        }
     }
 
     void EditorInterface::mouseCursorAreaPressRight( const int32_t tileIndex ) const
