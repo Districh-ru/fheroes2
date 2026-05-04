@@ -2795,20 +2795,6 @@ namespace Interface
                 world.CaptureObject( destinationTile, capturableObjectIter->second.ownerColor );
             }
 
-            if ( movableObjectInfo.groupType == Maps::ObjectGroup::KINGDOM_TOWNS ) {
-                // Update the castle entrance road.
-
-                const int32_t previousEntranceIndex = movableObjectInfo.tileIndex + _mapFormat.width;
-                if ( static_cast<size_t>( previousEntranceIndex ) < _mapFormat.tiles.size() ) {
-                    Maps::updateRoadOnTile( _mapFormat, previousEntranceIndex );
-                }
-
-                const int32_t newEntranceIndex = destinationTile + _mapFormat.width;
-                if ( static_cast<size_t>( newEntranceIndex ) < _mapFormat.tiles.size() ) {
-                    Maps::updateRoadOnTile( _mapFormat, newEntranceIndex );
-                }
-            }
-
             action->commit();
         }
 
