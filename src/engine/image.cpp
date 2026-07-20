@@ -2910,14 +2910,14 @@ namespace fheroes2
         // Pre-calculation of X position
         std::vector<int32_t> positionX( widthOut );
         for ( int32_t x = 0; x < widthOut; ++x ) {
-            positionX[x] = ( 0 + x ) * scaleDenominator / scaleNumerator - 0;
+            positionX[x] = ( ( posOutX + x ) * scaleDenominator + scaleNumerator / 2 ) / scaleNumerator - posInX;
         }
 
         if ( input.singleLayer() ) {
             for ( int32_t idY = 0; imageOutY != imageOutYEnd; imageOutY += widthOut, ++idY ) {
                 uint8_t * imageOutX = imageOutY;
 
-                const int32_t offset = ( (posOutY + idY ) * scaleDenominator / scaleNumerator - posInY ) * widthIn;
+                const int32_t offset = ( ( ( posOutY + idY ) * scaleDenominator + scaleNumerator / 2 ) / scaleNumerator - posInY ) * widthIn;
                 const uint8_t * imageInX = imageInY + offset;
 
                 for ( const int32_t posX : positionX ) {
@@ -2935,7 +2935,7 @@ namespace fheroes2
                 uint8_t * imageOutX = imageOutY;
                 uint8_t * transformOutX = transformOutY;
 
-                const int32_t offset = ( (0 + idY ) * scaleDenominator / scaleNumerator - 0 ) * widthIn;
+                const int32_t offset = ( ( ( posOutY + idY ) * scaleDenominator + scaleNumerator / 2 ) / scaleNumerator - posInY ) * widthIn;
                 const uint8_t * imageInX = imageInY + offset;
                 const uint8_t * transformInX = transformInY + offset;
 
