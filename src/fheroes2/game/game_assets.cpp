@@ -5764,10 +5764,11 @@ namespace
 
         // Resize only if needed
         if ( resizedIcn.height() != resizedHeight || resizedIcn.width() != resizedWidth ) {
-            resizedIcn.resize( resizedWidth, resizedHeight );
-            resizedIcn.setPosition( static_cast<int32_t>( std::lround( originalIcn.x() * scaleFactor ) ) + offsetX,
-                                    static_cast<int32_t>( std::lround( originalIcn.y() * scaleFactor ) ) + offsetY );
-            Resize( originalIcn, resizedIcn );
+            // resizedIcn.resize( resizedWidth, resizedHeight );
+            // resizedIcn.setPosition( static_cast<int32_t>( std::lround( originalIcn.x() * scaleFactor ) ) + offsetX,
+            //                         static_cast<int32_t>( std::lround( originalIcn.y() * scaleFactor ) ) + offsetY );
+            // Resize( originalIcn, resizedIcn );
+            resizedIcn = fheroes2::scaledResize( originalIcn, display.width(), fheroes2::Display::DEFAULT_WIDTH );
         }
         else {
             // No need to resize but we have to update the offset.

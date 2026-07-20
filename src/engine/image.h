@@ -348,6 +348,8 @@ namespace fheroes2
     void Resize( const Image & in, const int32_t inX, const int32_t inY, const int32_t widthRoiIn, const int32_t heightRoiIn, Image & out, const int32_t outX,
                  const int32_t outY, const int32_t widthRoiOut, const int32_t heightRoiOut );
 
+    Sprite scaledResize( const Sprite & input, const int32_t scaleNumerator, const int32_t scaleDenominator );
+
     // Please use value from the main palette only
     void SetPixel( Image & image, const int32_t x, const int32_t y, const uint8_t value );
 

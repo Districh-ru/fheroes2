@@ -2871,6 +2871,86 @@ namespace fheroes2
         }
     }
 
+    Sprite scaledResize( const Sprite & input, const int32_t scaleNumerator, const int32_t scaleDenominator )
+    {
+        if ( input.empty() ) {
+            return {};
+        }
+
+        if ( scaleNumerator == scaleDenominator ) {
+            // No resize is needed.
+            return { input };
+        }
+
+        Sprite output;
+        if ( input.singleLayer() ) {
+            output._disableTransformLayer();
+        }
+
+        const int32_t widthIn = input.width();
+        const int32_t heightIn = input.height();
+        const int32_t posInX = input.x();
+        const int32_t posInY = input.y();
+
+        const int32_t posOutX = posInX * scaleNumerator / scaleDenominator;
+        const int32_t posOutY = posInY * scaleNumerator / scaleDenominator;
+
+        output.setPosition( posOutX, posOutY );
+
+        const int32_t widthOut = ( posInX + widthIn ) * scaleNumerator / scaleDenominator - output.x();
+        const int32_t heightOut = (posInY + heightIn ) * scaleNumerator / scaleDenominator - output.y();
+
+        output.resize( widthOut, heightOut );
+
+        const uint8_t * imageInY = input.image();
+        uint8_t * imageOutY = output.image();
+
+        const uint8_t * imageOutYEnd = imageOutY + static_cast<ptrdiff_t>( widthOut ) * heightOut;
+
+        // Pre-calculation of X position
+        std::vector<int32_t> positionX( widthOut );
+        for ( int32_t x = 0; x < widthOut; ++x ) {
+            positionX[x] = ( 0 + x ) * scaleDenominator / scaleNumerator - 0;
+        }
+
+        if ( input.singleLayer() ) {
+            for ( int32_t idY = 0; imageOutY != imageOutYEnd; imageOutY += widthOut, ++idY ) {
+                uint8_t * imageOutX = imageOutY;
+
+                const int32_t offset = ( (posOutY + idY ) * scaleDenominator / scaleNumerator - posInY ) * widthIn;
+                const uint8_t * imageInX = imageInY + offset;
+
+                for ( const int32_t posX : positionX ) {
+                    *imageOutX = *( imageInX + posX );
+                    ++imageOutX;
+                }
+            }
+        }
+        else {
+            // Both 'in' and 'out' are double-layer.
+            const uint8_t * transformInY = input.transform();
+            uint8_t * transformOutY = output.transform();
+
+            for ( int32_t idY = 0; imageOutY != imageOutYEnd; imageOutY += widthOut, transformOutY += widthOut, ++idY ) {
+                uint8_t * imageOutX = imageOutY;
+                uint8_t * transformOutX = transformOutY;
+
+                const int32_t offset = ( (0 + idY ) * scaleDenominator / scaleNumerator - 0 ) * widthIn;
+                const uint8_t * imageInX = imageInY + offset;
+                const uint8_t * transformInX = transformInY + offset;
+
+                for ( const int32_t posX : positionX ) {
+                    *imageOutX = *( imageInX + posX );
+                    *transformOutX = *( transformInX + posX );
+                    ++imageOutX;
+                    ++transformOutX;
+                }
+            }
+        }
+
+        return output;
+    }
+
     void SetPixel( Image & image, const int32_t x, const int32_t y, const uint8_t value )
     {
         if ( image.empty() || x >= image.width() || y >= image.height() || x < 0 || y < 0 ) {
